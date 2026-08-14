@@ -1,0 +1,8 @@
+# Voice pipeline dependencies - installed separately because they are heavier
+# and involve native builds that take longer on a Raspberry Pi.
+# Install with: pip install -r requirements-voice.txt
+openwakeword>=0.6
+faster-whisper>=1.0
+piper-tts>=1.2
+sounddevice>=0.4
+numpy>=1.26
