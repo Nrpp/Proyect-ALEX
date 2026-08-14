@@ -1,0 +1,35 @@
+[Unit]
+Description=Project ALEX - personal AI assistant
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Adjust these two paths if you installed ALEX somewhere other than /home/pi/Proyect-ALEX
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/Proyect-ALEX
+EnvironmentFile=/home/pi/Proyect-ALEX/.env
+ExecStart=/home/pi/Proyect-ALEX/.venv/bin/python -m alex.main
+
+# Restart policy: come back after crashes, but don't hot-loop forever if
+# something is fundamentally broken (e.g. bad config).
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+# Give ALEX a moment to close the DB/websockets cleanly before SIGKILL.
+TimeoutStopSec=15
+
+# Access to audio devices for the voice pipeline.
+SupplementaryGroups=audio
+
+# Basic hardening - relax if a plugin legitimately needs more.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+
+[Install]
+WantedBy=multi-user.target

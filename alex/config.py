@@ -1,0 +1,109 @@
+"""
+Central configuration for ALEX.
+
+Everything is loaded from environment variables / a local `.env` file (see
+`.env.example`). No secrets ever live in source code. Config is intentionally
+a single flat, typed object so every module gets its settings the same way:
+
+    from alex.config import get_settings
+    settings = get_settings()
+"""
+from __future__ import annotations
+
+from functools import lru_cache
+from pathlib import Path
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = BASE_DIR / "data"
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=str(BASE_DIR / ".env"),
+        env_file_encoding="utf-8",
+        env_prefix="ALEX_",
+        extra="ignore",
+    )
+
+    # --- Identity -----------------------------------------------------
+    assistant_name: str = "Alex"
+    owner_name: str = "Nicolas"
+    timezone: str = "Europe/Madrid"
+
+    # --- Server / API ---------------------------------------------------
+    host: str = "0.0.0.0"
+    port: int = 8787
+    # Shared-secret bearer token clients must present. Generate with
+    # `python -m alex.scripts.gen_token` or `openssl rand -hex 32`.
+    api_token: str = Field(default="")
+    cors_origins: list[str] = Field(default_factory=lambda: ["*"])
+
+    # --- Storage --------------------------------------------------------
+    data_dir: Path = DATA_DIR
+    db_path: Path = DATA_DIR / "alex.db"
+    log_dir: Path = DATA_DIR / "logs"
+    log_level: str = "INFO"
+
+    # --- AI provider ------------------------------------------------------
+    # "nvidia" (NVIDIA NIM, OpenAI-compatible, free tier) or "anthropic" (Claude).
+    # The rest of ALEX never imports a provider SDK directly - see alex/ai/router.py.
+    ai_provider: str = "nvidia"
+
+    nvidia_api_key: str = ""
+    nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
+    nvidia_model: str = "meta/llama-3.1-70b-instruct"
+
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-sonnet-4-5"
+
+    ai_max_tokens: int = 1024
+    ai_temperature: float = 0.4
+    # Safety cap on the tool-calling loop (AI -> tool -> AI -> ...) per turn.
+    ai_max_tool_hops: int = 6
+
+    # --- Memory -----------------------------------------------------------
+    memory_recent_messages: int = 20  # short-term context window size
+    memory_max_facts_in_prompt: int = 12
+
+    # --- Plugins ------------------------------------------------------------
+    enabled_plugins: list[str] = Field(default_factory=lambda: ["system", "reminders"])
+
+    # --- Tools / permissions ---------------------------------------------------
+    # Hard kill-switch: tool names listed here are refused regardless of their
+    # declared permission level. Empty by default.
+    blocked_tools: list[str] = Field(default_factory=list)
+
+    # --- Voice --------------------------------------------------------------
+    voice_enabled: bool = False
+    wakeword_model_path: str = ""  # path to .onnx/.tflite model, empty = use openWakeWord default
+    wakeword_name: str = "hey_jarvis"  # placeholder default model shipped with openWakeWord
+    wakeword_threshold: float = 0.5
+    mic_device: str | None = None  # sounddevice device name/index, None = system default
+    stt_model_size: str = "small"  # tiny/base/small/medium (faster-whisper)
+    stt_language: str = "es"
+    tts_voice: str = "es_ES-davefx-medium"  # piper voice model name
+    tts_model_dir: Path = DATA_DIR / "voice_models" / "piper"
+    conversation_follow_up_seconds: float = 8.0  # window to keep listening w/o wake word
+
+    # --- Notifications --------------------------------------------------------
+    notification_min_priority_push: int = 2  # 0=info..3=critical; below this -> log only
+
+    @field_validator("data_dir", "db_path", "log_dir", "tts_model_dir", mode="before")
+    @classmethod
+    def _expand(cls, v):
+        return Path(v).expanduser() if v else v
+
+    def ensure_dirs(self) -> None:
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+
+
+@lru_cache
+def get_settings() -> Settings:
+    settings = Settings()
+    settings.ensure_dirs()
+    return settings
