@@ -126,7 +126,19 @@ class ALEXCore:
         )
 
     def _schedule_interval(self, func, seconds: float, job_id: str) -> None:
-        self.scheduler.add_job(func, "interval", seconds=seconds, id=job_id, replace_existing=True)
+        # Plugins pass a lambda wrapping a bound async method (e.g.
+        # `lambda: self._check(ctx)`). A bare lambda is NOT itself a
+        # coroutine function even though calling it returns one, so
+        # APScheduler's AsyncIOExecutor can't tell it needs awaiting - it
+        # runs the lambda in a worker thread and discards the resulting
+        # coroutine object unawaited (silently, no error - just a
+        # "coroutine was never awaited" RuntimeWarning at GC time, and the
+        # plugin's check logic never actually running). Wrapping in a real
+        # `async def` fixes this for every plugin at once.
+        async def runner() -> None:
+            await func()
+
+        self.scheduler.add_job(runner, "interval", seconds=seconds, id=job_id, replace_existing=True)
 
     # ------------------------------------------------------------------ #
     # Events

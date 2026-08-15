@@ -237,6 +237,16 @@ mic sensitivity varies a lot between USB mics.
 
 ## Troubleshooting
 
+**Reminders never fire, and/or the logs show `RuntimeWarning: coroutine
+'...' was never awaited`** (e.g. from `RemindersPlugin._check_due` or any
+other plugin's background check): this was a real bug in earlier versions
+- every plugin's scheduled background check (reminders, system monitoring,
+email/calendar/task due-soon checks) was silently never actually running,
+because of how APScheduler was handed the callback. `git pull` for the
+fix and `sudo systemctl restart alex` - no config changes needed. You can
+confirm it's fixed by setting a reminder a minute out and watching it
+actually notify you.
+
 **`pip install` fails on `tflite-runtime` while installing voice deps** (`ERROR:
 Could not find a version that satisfies the requirement tflite-runtime...`):
 you're on an older copy of `install_raspberry_pi.sh`/`requirements-voice.txt`
