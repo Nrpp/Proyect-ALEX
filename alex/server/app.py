@@ -13,15 +13,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from alex.config import Settings, get_settings
+from alex.config import BASE_DIR, Settings, get_settings
 from alex.core.core import ALEXCore
 from alex.core.errors import AlexError
 from alex.server.auth import require_token, require_token_ws
 from alex.server.ws import ConnectionManager
 
 log = logging.getLogger(__name__)
+
+WEB_CONSOLE_DIR = BASE_DIR / "clients" / "web_console"
 
 
 class ChatRequest(BaseModel):
@@ -136,5 +139,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             return
         client_id = websocket.query_params.get("client_id") or str(uuid.uuid4())
         await connections.handle_connection(websocket, client_id)
+
+    # --------------------------------------------------------------- #
+    # Web console - a static HUD-style chat client served straight from
+    # ALEX itself, at /console/. No build step: it's plain HTML/CSS/JS that
+    # talks to the same WS/REST API any other client uses (see
+    # clients/protocol.md). Not auth-gated (it holds no secrets itself -
+    # the token is entered by the user and used client-side), same trust
+    # model as clients/desktop_minimal.
+    # --------------------------------------------------------------- #
+    if WEB_CONSOLE_DIR.exists():
+        app.mount("/console", StaticFiles(directory=str(WEB_CONSOLE_DIR), html=True), name="console")
 
     return app

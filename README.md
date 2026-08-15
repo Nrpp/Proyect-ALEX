@@ -37,7 +37,9 @@ setup and verification on real hardware.
 - **Server** (`alex/server/`) - FastAPI REST + WebSocket API, token-authed,
   LAN-first.
 - **Clients** (`clients/`) - `protocol.md` defines the wire contract;
-  `desktop_minimal/` is a working cross-platform popup-notification client.
+  `desktop_minimal/` is a working cross-platform popup-notification client;
+  `web_console/` is a HUD-style browser chat client, served directly by
+  ALEX at `/console/`.
 
 ## Quick start (development machine, no Pi needed)
 
