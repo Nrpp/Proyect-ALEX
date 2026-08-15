@@ -417,6 +417,57 @@ task-management products; you don't need both.
 Gives ALEX `todo_list_tasks`, `todo_add_task`, `todo_complete_task`, plus a
 background check that notifies you about tasks due within 24 hours.
 
+## 11. System command execution (`system_exec`) - HIGH RISK, optional
+
+> **Read this before enabling.** This gives ALEX a `run_shell_command` tool
+> that can run anything the `alex` process's user can: read/modify/delete
+> any file it can reach, install or remove software, change configuration.
+> It is CONFIRM-gated - ALEX always asks you before running a command, no
+> exceptions, and every attempted command (approved or not) is logged - but
+> the blast radius of an approved command is the whole machine. Only enable
+> this on a Pi you're comfortable giving that level of access to.
+
+1. Add `"system_exec"` to `ALEX_ENABLED_PLUGINS` in `.env` and restart:
+   ```bash
+   sudo systemctl restart alex
+   ```
+2. Test it with something harmless first, e.g. ask ALEX (via `/console/`,
+   the desktop client, or `/chat`) to run `echo hola` or `df -h` - it should
+   explain what it's about to do and wait for your confirmation before
+   running it.
+
+### `sudo` commands (e.g. "inicia tailscale")
+
+Commands run with no interactive terminal, so anything that prompts for a
+`sudo` password will hang until it times out and fails - there's no way for
+ALEX to type a password for you. To let specific, approved commands run
+with `sudo` and no password prompt, add a **narrowly scoped** sudoers rule
+(never grant blanket passwordless root):
+
+```bash
+sudo visudo -f /etc/sudoers.d/alex-system-exec
+```
+
+Add (replace `nicolas` with the user `alex.service` runs as, and confirm
+the binary paths with `which tailscale` / `which systemctl` first - they
+can differ slightly between systems):
+
+```
+nicolas ALL=(root) NOPASSWD: /usr/bin/tailscale
+nicolas ALL=(root) NOPASSWD: /usr/bin/systemctl restart alex, /usr/bin/systemctl status alex
+```
+
+Save and exit (`visudo` validates the syntax before writing, so a typo
+can't lock out `sudo` entirely). This allows passwordless `sudo` for the
+`tailscale` binary specifically (its own auth model still applies - you
+still approve the device via a browser link) and for restarting/checking
+ALEX's own service, and nothing else.
+
+With that in place, you can ask ALEX something like "inicia tailscale y
+dame el enlace para autenticar" - it will run `sudo tailscale up`
+(after you confirm), capture the printed authentication URL from the
+output, and give it to you in the reply.
+
 ## Updating
 
 ```bash

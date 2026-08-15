@@ -129,7 +129,7 @@ tool-calling path at all. There is no way for the LLM to skip this.
 
 A `Plugin` contributes tools, event handlers, and scheduled background work
 through a `PluginContext`, without the Core needing to know it exists ahead
-of time - enabling it is a config line (`ALEX_ENABLED_PLUGINS`). Seven ship
+of time - enabling it is a config line (`ALEX_ENABLED_PLUGINS`). Eight ship
 today:
 
 - **system** (`installed/system_plugin.py`) - a `system_status` READ tool,
@@ -164,8 +164,20 @@ today:
   Background check raises `task.due_soon` for tasks due within 24h. Use
   this instead of google_tasks if you're on a Microsoft/Outlook account
   rather than Google's ecosystem.
+- **system_exec** (`installed/system_exec_plugin.py`) - `run_shell_command`,
+  a single CONFIRM-gated tool that runs an arbitrary shell command on the
+  machine ALEX itself runs on and returns stdout/stderr/exit code. This is
+  the one plugin that isn't a scoped integration - it's general-purpose
+  system access, exists for tasks like "start Tailscale" or "check disk
+  usage" that don't fit a narrower tool, and is the highest-risk capability
+  in ALEX by a wide margin (full access to whatever the `alex` process's
+  user can touch once a command is approved). Every attempted command is
+  logged regardless of outcome. Not enabled by default - see
+  `docs/INSTALL_RASPBERRY_PI.md` section 11, including how to scope
+  passwordless `sudo` narrowly for specific commands rather than granting
+  it broadly.
 
-The five integrations are disabled by default (each needs its own
+The five scoped integrations are disabled by default (each needs its own
 credentials configured first - see `docs/INSTALL_RASPBERRY_PI.md` section
 10) and, notably, add **zero new pip dependencies**: all OAuth/REST calls
 go through `httpx` (already a core dependency) rather than each vendor's

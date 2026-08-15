@@ -28,7 +28,10 @@ setup and verification on real hardware.
   Core. Ships with `system` (Pi health monitoring), `reminders`, and
   optional integrations for `home_assistant`, `email` (Gmail/IMAP),
   `google_calendar`, `google_tasks` and `ms_todo` (Microsoft To Do) - see
-  `docs/INSTALL_RASPBERRY_PI.md` section 10 for credential setup.
+  `docs/INSTALL_RASPBERRY_PI.md` section 10 for credential setup. Also
+  ships `system_exec` - a CONFIRM-gated `run_shell_command` tool that gives
+  ALEX full shell access to the Pi when you approve a command. High risk,
+  not enabled by default; read section 11 before turning it on.
 - **Events & notifications** (`alex/events/`, `alex/notifications/`) - rule
   based importance scoring decides ignore/store/notify, with per-event-type
   cooldowns so you don't get spammed.
