@@ -36,8 +36,11 @@ def _decode(value: str) -> str:
     )
 
 
+IMAP_TIMEOUT_SECONDS = 15
+
+
 def _connect(address: str, app_password: str) -> imaplib.IMAP4_SSL:
-    conn = imaplib.IMAP4_SSL(IMAP_HOST)
+    conn = imaplib.IMAP4_SSL(IMAP_HOST, timeout=IMAP_TIMEOUT_SECONDS)
     conn.login(address, app_password)
     conn.select("INBOX")
     return conn

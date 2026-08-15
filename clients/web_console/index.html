@@ -352,11 +352,22 @@
     log.scrollTop = log.scrollHeight;
   }
 
+  let pendingReplyTimer = null;
+
   function setThinking(on) {
     core.classList.toggle("thinking", on);
     coreState.textContent = on ? "PROCESANDO" : "EN ESPERA";
     sendBtn.disabled = on;
     msgInput.disabled = on;
+    clearTimeout(pendingReplyTimer);
+    if (on) {
+      // Safety net: if no chat.reply/error ever arrives (dropped connection,
+      // server hang, etc.) don't leave the UI stuck "thinking" forever.
+      pendingReplyTimer = setTimeout(() => {
+        setThinking(false);
+        addMessage("sys", "ALEX no respondio a tiempo. Puede que la peticion siga en curso en el servidor - revisa antes de reintentar.");
+      }, 90000);
+    }
   }
 
   // ---------------- Status ----------------
@@ -452,6 +463,10 @@
 
     ws.onclose = () => {
       setStatus("offline");
+      if (core.classList.contains("thinking")) {
+        setThinking(false);
+        addMessage("sys", "Se perdio la conexion mientras ALEX respondia. Puede que la peticion siga en curso en el servidor - revisa antes de reintentar.");
+      }
       scheduleReconnect();
     };
     ws.onerror = () => { try { ws.close(); } catch (e) {} };

@@ -15,6 +15,7 @@ that keeps every other module independently testable and swappable.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -163,13 +164,27 @@ class ALEXCore:
         reply_text = ""
 
         for _hop in range(self.settings.ai_max_tool_hops):
-            response = await self.ai.complete(
-                messages,
-                system=system_prompt,
-                tools=tool_specs,
-                max_tokens=self.settings.ai_max_tokens,
-                temperature=self.settings.ai_temperature,
-            )
+            try:
+                response = await asyncio.wait_for(
+                    self.ai.complete(
+                        messages,
+                        system=system_prompt,
+                        tools=tool_specs,
+                        max_tokens=self.settings.ai_max_tokens,
+                        temperature=self.settings.ai_temperature,
+                    ),
+                    timeout=self.settings.ai_request_timeout_seconds,
+                )
+            except asyncio.TimeoutError:
+                log.warning(
+                    "AI provider '%s' timed out after %ds on hop %d",
+                    self.ai.name, self.settings.ai_request_timeout_seconds, _hop,
+                )
+                reply_text = (
+                    "El proveedor de IA esta tardando demasiado en responder. "
+                    "Intentalo de nuevo en un momento."
+                )
+                break
 
             if not response.wants_tool_call:
                 reply_text = response.content or ""
