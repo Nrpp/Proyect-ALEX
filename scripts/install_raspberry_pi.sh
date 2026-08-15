@@ -15,6 +15,15 @@ for arg in "$@"; do
   esac
 done
 
+if [ "$(id -u)" -eq 0 ]; then
+  echo "Do not run this script with sudo/as root - it calls sudo itself for the" >&2
+  echo "specific steps that need it (apt, systemd). Running the whole script as" >&2
+  echo "root creates a root-owned virtualenv that the alex.service (running as" >&2
+  echo "your normal user) then cannot read. Re-run as your normal user instead," >&2
+  echo "with the same arguments (e.g. ./scripts/install_raspberry_pi.sh --with-voice)." >&2
+  exit 1
+fi
+
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CURRENT_USER="$(whoami)"
 VENV_DIR="$PROJECT_DIR/.venv"
@@ -30,6 +39,12 @@ if [ "$WITH_VOICE" = true ]; then
   sudo apt-get install -y portaudio19-dev libsndfile1 espeak-ng ffmpeg
 fi
 
+if [ -d "$VENV_DIR" ] && find "$VENV_DIR" -not -user "$CURRENT_USER" -print -quit | grep -q .; then
+  echo "==> $VENV_DIR contains files not owned by $CURRENT_USER (likely from a previous"
+  echo "    'sudo ./install_raspberry_pi.sh' run) - removing it so it can be rebuilt cleanly."
+  sudo rm -rf "$VENV_DIR"
+fi
+
 echo "==> Creating Python virtual environment at $VENV_DIR ..."
 python3 -m venv "$VENV_DIR"
 # shellcheck disable=SC1091
@@ -40,6 +55,13 @@ echo "==> Installing Python dependencies..."
 pip install -r "$PROJECT_DIR/requirements.txt"
 if [ "$WITH_VOICE" = true ]; then
   pip install -r "$PROJECT_DIR/requirements-voice.txt"
+  # openwakeword's published metadata unconditionally depends on
+  # tflite-runtime, which has no prebuilt wheel for recent Python versions
+  # on aarch64 (e.g. Python 3.12+, as shipped by current Raspberry Pi OS).
+  # We only ever use its ONNX backend (see alex/voice/wakeword.py), so
+  # install it with --no-deps - its real runtime deps are already satisfied
+  # by requirements-voice.txt above.
+  pip install --no-deps "openwakeword>=0.6"
 fi
 
 echo "==> Preparing data directories..."

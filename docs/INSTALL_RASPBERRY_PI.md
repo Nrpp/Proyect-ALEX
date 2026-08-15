@@ -25,6 +25,13 @@ With voice dependencies (wake word/STT/TTS, heavier install):
 ./scripts/install_raspberry_pi.sh --with-voice
 ```
 
+**Never run this script with `sudo`** - it calls `sudo` itself for the
+specific steps that need it (`apt`, `systemctl`). Running the whole thing as
+root creates a root-owned `.venv` that `alex.service` (which runs as your
+normal user) then can't read; the script refuses to run as root for this
+reason. If you already did this by mistake, just re-run as your normal
+user - the script detects a `.venv` with the wrong owner and rebuilds it.
+
 This installs system packages (via `apt`), creates a `.venv`, installs
 Python dependencies, generates `.env` from `.env.example` with a random
 `ALEX_API_TOKEN`, and installs+enables (but does not yet start) the
@@ -179,6 +186,26 @@ acknowledgement, then speak your request.
 adjust `SILENCE_AMPLITUDE_THRESHOLD` in `alex/voice/pipeline.py` (lower it
 if it's cutting you off, raise it if background noise keeps it listening) -
 mic sensitivity varies a lot between USB mics.
+
+## Troubleshooting
+
+**`pip install` fails on `tflite-runtime` while installing voice deps** (`ERROR:
+Could not find a version that satisfies the requirement tflite-runtime...`):
+you're on an older copy of `install_raspberry_pi.sh`/`requirements-voice.txt`
+- `git pull` to get the fix (openwakeword is installed with `--no-deps` since
+its published dependency on `tflite-runtime` has no wheel for recent Python
+versions on aarch64, and ALEX never uses that backend anyway). If you already
+have a partially-installed `.venv`, just re-run
+`./scripts/install_raspberry_pi.sh --with-voice` - it's safe to re-run.
+
+**`Permission denied` inside `.venv`, or `alex.service` fails to start with a
+permissions error**: `.venv` was created (or touched) by `root` at some
+point, usually from running the installer with `sudo` by mistake. Fix:
+
+```bash
+sudo rm -rf .venv
+./scripts/install_raspberry_pi.sh              # or --with-voice, as your normal user, no sudo
+```
 
 ## Updating
 
