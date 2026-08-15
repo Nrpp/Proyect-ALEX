@@ -70,10 +70,13 @@ class Settings(BaseSettings):
 
     anyapi_api_key: str = ""
     anyapi_base_url: str = "https://api.anyapi.ai/v1"
-    # Model ids are "provider/model-name" (e.g. "openai/gpt-4o-mini",
-    # "anthropic/claude-3.5-sonnet") - browse the catalog and pricing/free
-    # trial credits at https://anyapi.ai before picking one.
-    anyapi_model: str = "openai/gpt-4o-mini"
+    # Model ids are "provider/model-name". Paid models (e.g. "openai/gpt-4o-mini")
+    # return 403 key_model_access_denied on a free-credits key - this default is
+    # one of the ":free"-suffixed models included with a free AnyAPI account, and
+    # has good tool-calling support (needed for ALEX's tools/plugins). See what
+    # your own key can actually access with:
+    #   curl https://api.anyapi.ai/v1/models -H "Authorization: Bearer $ANYAPI_KEY"
+    anyapi_model: str = "meta-llama/llama-3.3-70b-instruct:free"
 
     ai_max_tokens: int = 1024
     ai_temperature: float = 0.4

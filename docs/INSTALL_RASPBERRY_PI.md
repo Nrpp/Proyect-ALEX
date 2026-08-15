@@ -56,9 +56,14 @@ nano .env
   browse other options (including paid ones needing OpenRouter account
   credits) at https://openrouter.ai/models.
 - **AnyAPI**: create a key at https://anyapi.ai, set `ALEX_ANYAPI_API_KEY`
-  and `ALEX_AI_PROVIDER=anyapi`. Model ids are `provider/model-name` (e.g.
-  `ALEX_ANYAPI_MODEL=openai/gpt-4o-mini`, the default) - browse the catalog
-  and pricing/trial credits at https://anyapi.ai.
+  and `ALEX_AI_PROVIDER=anyapi`. Model ids are `provider/model-name`; the
+  default (`meta-llama/llama-3.3-70b-instruct:free`) works on a free
+  account, but a free key can't access every model - paid ones (e.g.
+  `openai/gpt-4o-mini`) fail with `403 key_model_access_denied` unless your
+  account has credits. See exactly what your key can access with:
+  ```bash
+  curl https://api.anyapi.ai/v1/models -H "Authorization: Bearer $ALEX_ANYAPI_API_KEY"
+  ```
 
 `ALEX_API_TOKEN` was already generated for you - copy it, you'll need it to
 configure clients.
