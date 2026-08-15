@@ -43,7 +43,7 @@ Every WebSocket message (both directions) is a single JSON object with a
 | type | fields | purpose |
 |---|---|---|
 | `hello` | `assistant_name` | Sent immediately after a successful connection. |
-| `chat.reply` | `conversation_id`, `reply`, `pending_action_id` (nullable) | Answer to a `chat.message`. |
+| `chat.reply` | `conversation_id`, `reply`, `pending_action_id` (nullable) | Broadcast to **every** connected client whenever ALEX produces a reply in a conversation - not just as a direct answer to that client's own `chat.message`. This includes the outcome of a pending confirmation being resolved, even when it was resolved via `POST /actions/{id}/confirm` with no WebSocket round-trip involved (e.g. a notification button) - so a chat window stays in sync with confirmations approved/cancelled from anywhere. |
 | `notification` | `notification` (see below) | **Unsolicited push** - a new notification the Event Engine decided was worth surfacing. This is what drives the desktop overlay popup. |
 | `action.result` | `action_id`, `success`, `message` | Result of an `action.confirm`. |
 | `pong` | - | Reply to `ping`. |
