@@ -131,6 +131,21 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"success": ok}
 
     # --------------------------------------------------------------- #
+    # Reminders (read/cancel - creating one goes through chat, via the
+    # set_reminder tool, so the AI can parse relative times like "en 30
+    # minutos"; this is for clients that just need to show/manage the
+    # existing list, e.g. AlexOS's Alex module)
+    # --------------------------------------------------------------- #
+    @app.get("/reminders", dependencies=[Depends(require_token)])
+    async def list_reminders():
+        return await core.memory.list_pending_reminders()
+
+    @app.delete("/reminders/{reminder_id}", dependencies=[Depends(require_token)])
+    async def cancel_reminder(reminder_id: str):
+        ok = await core.memory.cancel_reminder(reminder_id)
+        return {"success": ok}
+
+    # --------------------------------------------------------------- #
     # WebSocket - persistent, real-time channel for clients
     # --------------------------------------------------------------- #
     @app.websocket("/ws")
