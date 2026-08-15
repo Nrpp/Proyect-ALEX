@@ -91,6 +91,8 @@ All require `Authorization: Bearer <ALEX_API_TOKEN>` except `/health`.
 - `GET /actions/pending` -> list of pending confirmations
 - `GET /notifications?limit=20&status=` -> list of notifications (history)
 - `POST /notifications/{id}/status` `{status}` -> mark `delivered` / `dismissed` / `acted`
+- `GET /reminders` -> pending reminders, `[{id, text, due_at}]`, ordered by `due_at` ascending
+- `DELETE /reminders/{id}` -> `{success}`; cancels a pending reminder (creating one is chat-only, via the `set_reminder` tool, since the AI resolves relative times like "en 30 minutos")
 
 ## Extending the protocol
 
