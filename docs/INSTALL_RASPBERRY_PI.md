@@ -50,6 +50,11 @@ nano .env
   `ALEX_AI_PROVIDER=nvidia`.
 - **Anthropic Claude**: set `ALEX_ANTHROPIC_API_KEY` and
   `ALEX_AI_PROVIDER=anthropic`.
+- **OpenRouter**: create a key at https://openrouter.ai/keys, set
+  `ALEX_OPENROUTER_API_KEY` and `ALEX_AI_PROVIDER=openrouter`. Defaults to
+  a free-tier model (`ALEX_OPENROUTER_MODEL=meta-llama/llama-3.1-8b-instruct:free`);
+  browse other options (including paid ones needing OpenRouter account
+  credits) at https://openrouter.ai/models.
 
 `ALEX_API_TOKEN` was already generated for you - copy it, you'll need it to
 configure clients.
