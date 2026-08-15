@@ -276,6 +276,103 @@ sudo ufw enable
 
 (Adjust `192.168.0.0/16` to match your actual LAN subnet if different.)
 
+## 10. Optional integrations
+
+None of these are enabled by default - each needs its own credentials set
+up first. After configuring one, add its plugin id to
+`ALEX_ENABLED_PLUGINS` in `.env` (e.g.
+`ALEX_ENABLED_PLUGINS=["system","reminders","home_assistant"]`) and
+`sudo systemctl restart alex`. No credentials, no new dependencies to
+install - all four use only `httpx` and the standard library, already
+installed.
+
+### 10a. Home Assistant
+
+Only useful if you already run a Home Assistant instance on your network.
+
+1. In Home Assistant: your profile (bottom-left) -> scroll to **Long-Lived
+   Access Tokens** -> **Create Token**. Copy it now, it's shown once.
+2. In the Pi's `.env`:
+   ```
+   ALEX_HOME_ASSISTANT_URL=http://homeassistant.local:8123
+   ALEX_HOME_ASSISTANT_TOKEN=<the token from step 1>
+   ```
+3. Add `"home_assistant"` to `ALEX_ENABLED_PLUGINS` and restart.
+
+Gives ALEX `ha_get_state`, `ha_list_entities` and `ha_call_service` (the
+last one always asks for confirmation before acting, since it controls real
+devices).
+
+### 10b. Gmail (IMAP)
+
+1. Turn on 2-Step Verification on the Google account if it isn't already
+   (required for app passwords): https://myaccount.google.com/security
+2. Create an app password: https://myaccount.google.com/apppasswords ->
+   name it "ALEX" -> copy the 16-character password.
+3. In the Pi's `.env`:
+   ```
+   ALEX_GMAIL_ADDRESS=you@gmail.com
+   ALEX_GMAIL_APP_PASSWORD=<the 16-char app password, no spaces>
+   ```
+4. Add `"email"` to `ALEX_ENABLED_PLUGINS` and restart.
+
+Gives ALEX `email_check_unread` and `email_mark_read`, plus a background
+check every 5 minutes that surfaces new mail (stored, not push-notified, by
+default - see `alex/events/engine.py` if you want it louder). Reading only;
+ALEX does not send email in this version.
+
+### 10c. Google Calendar
+
+1. In https://console.cloud.google.com: create/select a project -> **APIs &
+   Services > Library** -> enable **Google Calendar API**.
+2. **APIs & Services > Credentials > Create Credentials > OAuth client ID**
+   -> application type **Desktop app**. Note the Client ID and Client Secret.
+3. **On your laptop** (needs a browser - not the Pi):
+   ```bash
+   cd Proyect-ALEX   # or wherever you cloned the repo locally
+   python3 scripts/google_calendar_auth.py --client-id <id> --client-secret <secret>
+   ```
+   This opens a browser tab to log in and consent, then prints the three
+   lines to add to the Pi's `.env`.
+4. Paste those three lines (`ALEX_GOOGLE_CALENDAR_CLIENT_ID`,
+   `_CLIENT_SECRET`, `_REFRESH_TOKEN`) into the Pi's `.env`.
+5. Add `"google_calendar"` to `ALEX_ENABLED_PLUGINS` and restart.
+
+Gives ALEX `calendar_list_upcoming`, `calendar_create_event`,
+`calendar_delete_event` (confirmation required), plus a background check
+that notifies you ~60 minutes before an event starts.
+
+### 10d. Microsoft To Do
+
+1. In https://portal.azure.com: **Azure Active Directory > App
+   registrations > New registration**. Name it "ALEX", leave redirect URI
+   empty, register.
+2. **Authentication** -> under **Advanced settings**, set **Allow public
+   client flows** to **Yes** -> Save.
+3. **API permissions > Add a permission > Microsoft Graph > Delegated
+   permissions** -> add `Tasks.ReadWrite` -> (grant admin consent if you're
+   the tenant admin, otherwise you'll consent yourself during login).
+4. Copy the **Application (client) ID** from the app's Overview page.
+5. In the Pi's `.env`:
+   ```
+   ALEX_MS_CLIENT_ID=<the client id from step 4>
+   ALEX_MS_TENANT=consumers
+   ```
+   (`consumers` for a personal Microsoft account; use `common` if you also
+   want to allow a work/school account.)
+6. Add `"ms_todo"` to `ALEX_ENABLED_PLUGINS` and restart, then watch the logs:
+   ```bash
+   journalctl -u alex -f
+   ```
+   On first start you'll see a message like "ve a
+   https://microsoft.com/devicelogin e introduce el codigo XXXXXXX" - it's
+   also pushed as a notification (so it reaches the desktop client too). Do
+   that once from any browser and ALEX stores the resulting token for future
+   restarts (via its own memory, not the `.env` file).
+
+Gives ALEX `todo_list_tasks`, `todo_add_task`, `todo_complete_task`, plus a
+background check that notifies you about tasks due within 24 hours.
+
 ## Updating
 
 ```bash

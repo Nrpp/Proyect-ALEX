@@ -129,21 +129,43 @@ tool-calling path at all. There is no way for the LLM to skip this.
 
 A `Plugin` contributes tools, event handlers, and scheduled background work
 through a `PluginContext`, without the Core needing to know it exists ahead
-of time - enabling it is a config line (`ALEX_ENABLED_PLUGINS`). Two ship
-today as the reference implementation:
+of time - enabling it is a config line (`ALEX_ENABLED_PLUGINS`). Six ship
+today:
 
 - **system** (`installed/system_plugin.py`) - a `system_status` READ tool,
   plus a 60s background check that raises `system.*` events when CPU temp,
-  disk or memory get close to the limit on the Pi.
+  disk or memory get close to the limit on the Pi. Enabled by default.
 - **reminders** (`installed/reminders_plugin.py`) - `set_reminder` /
   `list_reminders` / `cancel_reminder` tools, plus a 30s background check
-  that raises `reminder.due` events when one comes due.
+  that raises `reminder.due` events when one comes due. Enabled by default.
+- **home_assistant** (`installed/home_assistant_plugin.py`) - reads Home
+  Assistant entity state and calls services over its REST API (bearer
+  token auth). `ha_call_service` is CONFIRM-level since it controls real
+  devices; the read tools are not.
+- **email** (`installed/email_plugin.py`) - reads/marks-read Gmail over
+  IMAP with an app password (no OAuth app registration needed). Background
+  check surfaces new mail as a (stored, not pushed by default) event.
+- **google_calendar** (`installed/google_calendar_plugin.py`) - lists,
+  creates and deletes Calendar events via the Calendar v3 REST API,
+  authenticated with a long-lived OAuth2 refresh token minted once via
+  `scripts/google_calendar_auth.py` (run on a machine with a browser, not
+  the Pi). Background check raises `calendar.upcoming` ~60 minutes before
+  an event starts.
+- **ms_todo** (`installed/ms_todo_plugin.py`) - lists/creates/completes
+  Microsoft To Do tasks via Graph, authenticated with the OAuth2
+  device-code flow (no browser needed on the Pi at all - it notifies you
+  with a URL + short code to approve from any device on first run).
+  Background check raises `task.due_soon` for tasks due within 24h.
 
-Future integrations (Microsoft To Do, calendar, email, Home Assistant,
-music, browser, Windows-side actions...) follow the exact same pattern:
-own module under `installed/`, own tools, own auth handling internally, own
-event types. The Core, memory, permission system and API never change to
-add one.
+The four integrations are disabled by default (each needs its own
+credentials configured first - see `docs/INSTALL_RASPBERRY_PI.md` section
+10) and, notably, add **zero new pip dependencies**: all OAuth/REST calls
+go through `httpx` (already a core dependency) rather than each vendor's
+SDK, kept consistent with the rest of the codebase's httpx-based AI
+providers. Any future integration (music, browser/web, Windows-side
+actions...) follows the same pattern: own module under `installed/`, own
+tools, own auth handling internally, own event types. The Core, memory,
+permission system and API never change to add one.
 
 ### Events & notifications (`alex/events/`, `alex/notifications/`)
 
