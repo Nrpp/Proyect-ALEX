@@ -39,6 +39,32 @@ from alex.tools.registry import ToolRegistry
 
 log = logging.getLogger(__name__)
 
+# Exact-match (after lowercasing/stripping) responses treated as a direct
+# yes/no to a pending CONFIRM-level action, so "si"/"no" typed in chat
+# resolves it immediately instead of being re-interpreted by the model as a
+# brand new request (which previously re-triggered the same tool call and
+# created a fresh pending confirmation - an infinite loop). Deliberately a
+# short, exact-match list rather than substring matching: a message like
+# "no lo puedes ver?" contains "no" but is clearly not a decision on the
+# pending action, and a false "approved" here would be far worse than
+# occasionally falling through to a normal chat turn.
+_AFFIRMATIVE_RESPONSES = {
+    "si", "sí", "s", "confirmo", "confirmar", "vale", "ok", "okay", "dale",
+    "adelante", "hazlo", "listo", "correcto", "afirmativo", "yes", "y", "yep",
+}
+_NEGATIVE_RESPONSES = {
+    "no", "cancela", "cancelar", "n", "nel", "negativo", "cancel", "nope", "para",
+}
+
+
+def _classify_confirmation_response(text: str) -> bool | None:
+    normalized = text.strip().lower().rstrip(".!¿?,;")
+    if normalized in _AFFIRMATIVE_RESPONSES:
+        return True
+    if normalized in _NEGATIVE_RESPONSES:
+        return False
+    return None
+
 
 class ALEXCore:
     def __init__(self, settings: Settings):
@@ -54,6 +80,10 @@ class ALEXCore:
         self.plugins = PluginManager()
         self.scheduler = AsyncIOScheduler()
         self._started = False
+        # conversation_id -> action_id, for the most recent still-unresolved
+        # CONFIRM-level tool call raised in that conversation (see
+        # handle_user_message and _classify_confirmation_response above).
+        self._pending_confirmations: dict[str, str] = {}
 
     # ------------------------------------------------------------------ #
     # Lifecycle
@@ -163,9 +193,40 @@ class ALEXCore:
             if conversation_id is None:
                 conversation_id = await self.memory.start_conversation(channel)
 
+        # If this conversation has an unresolved CONFIRM-level action and the
+        # user's message is an unambiguous yes/no, resolve it directly - no
+        # AI call needed, and critically, this is decided by plain code, not
+        # by the model, so it can't be talked into self-approving anything.
+        pending_id = self._pending_confirmations.get(conversation_id)
+        if pending_id and self.permissions.get_pending(pending_id) is None:
+            self._pending_confirmations.pop(conversation_id, None)
+            pending_id = None
+        if pending_id:
+            approved = _classify_confirmation_response(text)
+            if approved is not None:
+                await self.memory.add_message(conversation_id, "user", text)
+                # resolve_pending_action already persists the assistant's
+                # outcome message to this same conversation_id (it looks it
+                # up via _pending_confirmations before popping it below) -
+                # do not add it again here, or every chat-resolved
+                # confirmation would be written to memory twice.
+                result = await self.resolve_pending_action(pending_id, approved)
+                reply_text = result["message"]
+                await self.event_bus.publish(
+                    "message.outgoing", {"conversation_id": conversation_id, "text": reply_text}
+                )
+                return {"conversation_id": conversation_id, "reply": reply_text, "pending_action_id": None}
+
         await self.memory.add_message(conversation_id, "user", text)
         context = await self.memory.build_context_bundle(conversation_id, text)
         system_prompt = build_system_prompt(self.settings.assistant_name, self.settings.owner_name, context)
+        if pending_id:
+            pending = self.permissions.get_pending(pending_id)
+            system_prompt += (
+                f"\n\nNota: hay una confirmacion sin resolver ({pending.tool_name}: {pending.reason}). "
+                f"Si el usuario esta respondiendo a eso, pidele que conteste claramente 'si' o 'no'. "
+                f"No repitas la llamada a la herramienta original mientras siga pendiente."
+            )
 
         messages: list[ChatMessage] = [
             ChatMessage(role=m.role, content=m.content) for m in context["recent_messages"]
@@ -174,7 +235,7 @@ class ALEXCore:
 
         try:
             reply_text, pending_action_id = await asyncio.wait_for(
-                self._run_conversation_loop(messages, tool_specs, system_prompt),
+                self._run_conversation_loop(messages, tool_specs, system_prompt, conversation_id),
                 timeout=self.settings.ai_turn_timeout_seconds,
             )
         except asyncio.TimeoutError:
@@ -199,7 +260,7 @@ class ALEXCore:
         }
 
     async def _run_conversation_loop(
-        self, messages: list[ChatMessage], tool_specs: list, system_prompt: str
+        self, messages: list[ChatMessage], tool_specs: list, system_prompt: str, conversation_id: str
     ) -> tuple[str, str | None]:
         """The AI -> tool -> AI hop loop, extracted so the whole thing can be
         wrapped in a single overall timeout by the caller (see
@@ -246,10 +307,12 @@ class ALEXCore:
                 if tool_message is None:
                     # ConfirmationRequired: bail out of the loop entirely for this turn.
                     pending_action_id = confirm_action_id
+                    self._pending_confirmations[conversation_id] = pending_action_id
                     tool = self.tools.get(call.name)
                     reply_text = (
                         f"Antes de hacerlo necesito tu confirmacion: {tool.description if tool else call.name}. "
-                        f"Te he enviado una notificacion para confirmar o cancelar."
+                        f"Puedes responder aqui mismo con 'si' o 'no', o usar el boton de la notificacion "
+                        f"que te acabo de enviar."
                     )
                     await self.notifications.create(
                         source="alex",
@@ -291,6 +354,16 @@ class ALEXCore:
     # Confirmation resolution (called from the API when the user confirms/cancels)
     # ------------------------------------------------------------------ #
     async def resolve_pending_action(self, action_id: str, approved: bool) -> dict:
+        # Whichever conversation raised this confirmation (if any - it might
+        # have come from a client that doesn't track one, e.g. a notification
+        # click with no active chat) gets the outcome appended to its
+        # history too, not just returned to whoever called this.
+        conversation_id = next(
+            (cid for cid, pid in self._pending_confirmations.items() if pid == action_id), None
+        )
+        for cid in [c for c, pid in self._pending_confirmations.items() if pid == action_id]:
+            del self._pending_confirmations[cid]
+
         action = self.permissions.pop_pending(action_id)
         if action is None:
             return {"success": False, "message": "Esa accion ya no esta pendiente o no existe."}
@@ -300,7 +373,9 @@ class ALEXCore:
                 source="alex", title="Accion cancelada",
                 body=f"Se cancelo: {action.tool_name}", priority=0,
             )
-            return {"success": True, "message": "Accion cancelada."}
+            if conversation_id:
+                await self.memory.add_message(conversation_id, "assistant", "Vale, cancelado.")
+            return {"success": True, "message": "Vale, cancelado."}
 
         try:
             result = await self.tools.execute_confirmed(action.tool_name, action.arguments)
@@ -308,12 +383,15 @@ class ALEXCore:
             await self.notifications.create(
                 source="alex", title="La accion fallo", body=e.message, priority=2,
             )
+            if conversation_id:
+                await self.memory.add_message(conversation_id, "assistant", f"Fallo: {e.message}")
             return {"success": False, "message": e.message}
 
         await self.notifications.create(
             source="alex", title="Accion completada", body=result.content, priority=1,
         )
-        conversation_id = await self.memory.latest_conversation_id("voice")
+        if conversation_id is None:
+            conversation_id = await self.memory.latest_conversation_id("voice")
         if conversation_id:
             await self.memory.add_message(conversation_id, "assistant", f"Hecho: {result.content}")
-        return {"success": True, "message": result.content}
+        return {"success": True, "message": f"Hecho: {result.content}"}
