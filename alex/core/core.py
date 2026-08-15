@@ -232,7 +232,10 @@ class ALEXCore:
                 break
 
             if not response.wants_tool_call:
-                reply_text = response.content or ""
+                # Some models pad their final answer with leading/trailing
+                # whitespace or blank lines - harmless to strip, and keeps
+                # clients (chat bubbles, TTS, notifications) from showing it.
+                reply_text = (response.content or "").strip()
                 break
 
             messages.append(ChatMessage(role="assistant", content=response.content or "", tool_calls=response.tool_calls))
