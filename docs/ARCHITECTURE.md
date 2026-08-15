@@ -234,6 +234,14 @@ It is intentionally minimal - no tray icon, no chat window - so it's fast
 to build on for a real Windows client, an avatar UI, or "AlexOS" later
 without the protocol changing.
 
+`clients/web_console/index.html` is a second reference client: a
+self-contained (no build step, no dependencies) HUD-styled chat interface,
+mounted by the server itself at `/console/` (see `alex/server/app.py`).
+Same protocol, same auth model (token entered client-side, held in
+`localStorage`) - it exists to prove a browser-based client works over the
+exact same contract as the desktop one, and to give a fast way to talk to
+ALEX from any device without installing anything.
+
 ## Why these specific technology choices
 
 | Concern | Choice | Why |

@@ -125,6 +125,27 @@ python client.py
 Trigger the reminder test above again (or wait for one) - a popup should
 appear in the top-right corner of your screen.
 
+## 7b. Chat from a browser - the web console
+
+For quick text conversations from any device (phone, laptop, whatever's
+around) without installing anything, ALEX serves a small HUD-style chat
+client directly - no separate service, no build step, just static
+HTML/CSS/JS served by ALEX itself:
+
+```
+http://<pi-ip-or-hostname.local>:8787/console/
+```
+
+Open that URL in a browser, enter the Pi's host/port and your
+`ALEX_API_TOKEN` (from `.env`, step 3) once - it's remembered in that
+browser's local storage. It talks over the same WebSocket protocol as
+every other client (`clients/protocol.md`): live chat, and any
+notification ALEX pushes shows up as a HUD alert in the corner, with the
+same confirm/dismiss actions as the desktop client.
+
+The source is `clients/web_console/index.html` if you want to reskin it -
+it's a single self-contained file, no dependencies.
+
 ## 8. Voice setup (optional, do this after steps 1-7 work)
 
 Voice needs three things beyond `--with-voice`'s Python packages: a working
