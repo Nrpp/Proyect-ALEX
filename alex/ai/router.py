@@ -5,7 +5,7 @@ from alex.ai.base import AIProvider
 from alex.config import Settings
 from alex.core.errors import ConfigError
 
-_KNOWN_PROVIDERS = ("nvidia", "anthropic", "openrouter")
+_KNOWN_PROVIDERS = ("nvidia", "anthropic", "openrouter", "anyapi")
 
 
 def build_ai_provider(settings: Settings) -> AIProvider:
@@ -29,6 +29,15 @@ def build_ai_provider(settings: Settings) -> AIProvider:
             api_key=settings.openrouter_api_key,
             base_url=settings.openrouter_base_url,
             model=settings.openrouter_model,
+        )
+
+    if settings.ai_provider == "anyapi":
+        from alex.ai.anyapi_provider import AnyAPIProvider
+
+        return AnyAPIProvider(
+            api_key=settings.anyapi_api_key,
+            base_url=settings.anyapi_base_url,
+            model=settings.anyapi_model,
         )
 
     raise ConfigError(

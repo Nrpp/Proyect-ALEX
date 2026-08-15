@@ -72,19 +72,19 @@ only module that knows about all the others. It's built once at startup by
 ### AI layer (`alex/ai/`)
 
 `AIProvider` is an abstract interface (`complete()`, `health_check()`).
-`NvidiaProvider`, `OpenRouterProvider` and `AnthropicProvider` implement it,
-normalizing each into the same `AIResponse`/`ToolCall` dataclasses.
-NVIDIA and OpenRouter both speak the OpenAI-compatible chat-completions
-format, so they share one implementation
-(`alex/ai/openai_compatible_provider.py`) and are each just a ~10-line
-subclass supplying their own name/base_url/api_key/model - Anthropic's
-wire format is different enough (no separate "tool" role, different tool
-schema) to need its own file. `alex/ai/router.py` picks the active one
-based on `ALEX_AI_PROVIDER`. **Nothing else in the codebase imports
-`openai` or `anthropic`** - that's the whole point: switching providers, or
-adding a fourth one later (e.g. a fully local model if Raspberry Pi
-hardware ever gets there, or another OpenAI-compatible host like Groq or a
-local vLLM/Ollama server), only touches this package.
+`NvidiaProvider`, `OpenRouterProvider`, `AnyAPIProvider` and
+`AnthropicProvider` implement it, normalizing each into the same
+`AIResponse`/`ToolCall` dataclasses. NVIDIA, OpenRouter and AnyAPI all
+speak the OpenAI-compatible chat-completions format, so they share one
+implementation (`alex/ai/openai_compatible_provider.py`) and are each just
+a ~10-line subclass supplying their own name/base_url/api_key/model -
+Anthropic's wire format is different enough (no separate "tool" role,
+different tool schema) to need its own file. `alex/ai/router.py` picks the
+active one based on `ALEX_AI_PROVIDER`. **Nothing else in the codebase
+imports `openai` or `anthropic`** - that's the whole point: switching
+providers, or adding another one later (e.g. a fully local model if
+Raspberry Pi hardware ever gets there, or another OpenAI-compatible host
+like Groq or a local vLLM/Ollama server), only touches this package.
 
 ### Memory (`alex/memory/`)
 
@@ -282,6 +282,7 @@ existing contract.
 | Default AI provider | NVIDIA NIM (OpenAI-compatible) | Free hosted inference tier, no local GPU required, swappable via the `AIProvider` interface. |
 | Alternate AI provider | Anthropic Claude | Already used for development; supported as a first-class, equally-weighted option, not a special case. |
 | Alternate AI provider | OpenRouter (OpenAI-compatible) | One key, many vendors/models (including free-tier ones) - useful if NVIDIA's catalog doesn't have what you want. |
+| Alternate AI provider | AnyAPI (OpenAI-compatible) | Same idea as OpenRouter, different aggregator/catalog - included for choice, not because one is objectively better. |
 | Wake word | openWakeWord | Local, CPU-only, ONNX models small enough for a Pi 4, actively maintained, supports custom keyword training. |
 | STT | faster-whisper (CTranslate2) | Local, int8-quantized "small" model transcribes short utterances in a few seconds on Pi 4 CPU. |
 | TTS | Piper | Purpose-built for small local devices; natural-sounding, fast, offline. |

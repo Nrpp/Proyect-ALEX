@@ -49,9 +49,9 @@ class Settings(BaseSettings):
 
     # --- AI provider ------------------------------------------------------
     # "nvidia" (NVIDIA NIM, OpenAI-compatible, free tier), "anthropic" (Claude),
-    # or "openrouter" (OpenAI-compatible, many vendors/models behind one key,
-    # including several free-tier ones). The rest of ALEX never imports a
-    # provider SDK directly - see alex/ai/router.py.
+    # "openrouter" or "anyapi" (both OpenAI-compatible, many vendors/models
+    # behind one key). The rest of ALEX never imports a provider SDK directly
+    # - see alex/ai/router.py.
     ai_provider: str = "nvidia"
 
     nvidia_api_key: str = ""
@@ -67,6 +67,13 @@ class Settings(BaseSettings):
     # change to any model id from https://openrouter.ai/models once you have a
     # preference (paid models need OpenRouter account credits).
     openrouter_model: str = "meta-llama/llama-3.1-8b-instruct:free"
+
+    anyapi_api_key: str = ""
+    anyapi_base_url: str = "https://api.anyapi.ai/v1"
+    # Model ids are "provider/model-name" (e.g. "openai/gpt-4o-mini",
+    # "anthropic/claude-3.5-sonnet") - browse the catalog and pricing/free
+    # trial credits at https://anyapi.ai before picking one.
+    anyapi_model: str = "openai/gpt-4o-mini"
 
     ai_max_tokens: int = 1024
     ai_temperature: float = 0.4

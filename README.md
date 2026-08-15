@@ -17,8 +17,8 @@ setup and verification on real hardware.
 
 - **Core** (`alex/core/`) - orchestrator, event bus, error handling.
 - **AI layer** (`alex/ai/`) - provider-agnostic interface; ships with NVIDIA
-  NIM (free tier, default), Anthropic Claude, and OpenRouter, swappable via
-  config.
+  NIM (free tier, default), Anthropic Claude, OpenRouter and AnyAPI,
+  swappable via config.
 - **Memory** (`alex/memory/`) - SQLite-backed conversation history,
   long-term searchable memories, facts, preferences, reminders - accessed
   only through `MemoryManager`, never raw SQL from anywhere else.
@@ -90,7 +90,7 @@ annotated list), loaded from `.env` - never commit that file. Key ones:
 | Variable | Purpose |
 |---|---|
 | `ALEX_API_TOKEN` | Shared secret clients must present. Generate with `openssl rand -hex 32`. |
-| `ALEX_AI_PROVIDER` | `nvidia` (default, free tier), `anthropic`, or `openrouter`. |
+| `ALEX_AI_PROVIDER` | `nvidia` (default, free tier), `anthropic`, `openrouter`, or `anyapi`. |
 | `ALEX_ENABLED_PLUGINS` | JSON list of plugin ids to load, e.g. `["system","reminders"]`. |
 | `ALEX_VOICE_ENABLED` | `true` to start the wake-word/STT/TTS pipeline. |
 
