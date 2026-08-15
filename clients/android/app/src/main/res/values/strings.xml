@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ALEX</string>
+    <string name="tagline">PERSONAL AI — PUENTE ANDROID</string>
+    <string name="label_host">HOST</string>
+    <string name="label_port">PUERTO</string>
+    <string name="label_token">TOKEN</string>
+    <string name="label_autostart">Iniciar automaticamente al arrancar el telefono</string>
+    <string name="btn_save">GUARDAR</string>
+    <string name="btn_overlay_permission">CONCEDER PERMISO DE SUPERPOSICION</string>
+    <string name="btn_start">INICIAR SERVICIO</string>
+    <string name="btn_stop">DETENER SERVICIO</string>
+</resources>

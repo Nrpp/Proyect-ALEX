@@ -42,7 +42,9 @@ setup and verification on real hardware.
 - **Clients** (`clients/`) - `protocol.md` defines the wire contract;
   `desktop_minimal/` is a working cross-platform popup-notification client;
   `web_console/` is a HUD-style browser chat client, served directly by
-  ALEX at `/console/`.
+  ALEX at `/console/`; `android/` is a native Android app that runs as a
+  background service and overlays important notifications on top of other
+  apps.
 
 ## Quick start (development machine, no Pi needed)
 
