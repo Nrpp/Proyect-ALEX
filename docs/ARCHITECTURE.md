@@ -254,6 +254,18 @@ Same protocol, same auth model (token entered client-side, held in
 exact same contract as the desktop one, and to give a fast way to talk to
 ALEX from any device without installing anything.
 
+`clients/android/` is a third: a native Kotlin app (see its own
+`README.md`) built around a foreground `Service` that keeps the WebSocket
+connection alive in the background - the one thing neither the desktop nor
+web client can do on a phone, since Android suspends ordinary background
+work aggressively. It turns every pushed notification into a real Android
+notification (priority-mapped to a notification channel) and, for
+higher-priority ones, an on-top overlay drawn over whatever app is in the
+foreground (`SYSTEM_ALERT_WINDOW` + `WindowManager`), with the same
+confirm/dismiss actions wired to the same REST endpoints. No new
+server-side protocol needed - purely a third implementation of the
+existing contract.
+
 ## Why these specific technology choices
 
 | Concern | Choice | Why |

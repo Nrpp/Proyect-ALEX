@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same HUD palette as clients/web_console/index.html, for a consistent look across clients. -->
+    <color name="bg">#04070A</color>
+    <color name="panel">#0A131A</color>
+    <color name="line">#22E8FF</color>
+    <color name="cyan">#22E8FF</color>
+    <color name="text">#D8FAFF</color>
+    <color name="muted">#5C7A86</color>
+    <color name="amber">#FFB020</color>
+    <color name="red">#FF3B5C</color>
+</resources>
