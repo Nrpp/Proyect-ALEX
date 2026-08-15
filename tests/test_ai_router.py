@@ -33,7 +33,7 @@ def test_router_builds_anyapi_provider():
     settings = Settings(
         ai_provider="anyapi",
         anyapi_api_key="test-key",
-        anyapi_model="meta-llama/llama-3.3-70b-instruct:free",
+        anyapi_model="nvidia/nemotron-nano-9b-v2:free",
     )
     provider = build_ai_provider(settings)
     assert isinstance(provider, AnyAPIProvider)

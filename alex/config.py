@@ -71,12 +71,17 @@ class Settings(BaseSettings):
     anyapi_api_key: str = ""
     anyapi_base_url: str = "https://api.anyapi.ai/v1"
     # Model ids are "provider/model-name". Paid models (e.g. "openai/gpt-4o-mini")
-    # return 403 key_model_access_denied on a free-credits key - this default is
-    # one of the ":free"-suffixed models included with a free AnyAPI account, and
-    # has good tool-calling support (needed for ALEX's tools/plugins). See what
-    # your own key can actually access with:
+    # return 403 key_model_access_denied on a free-credits key, and some models
+    # listed under a free key 404 anyway (delisted/unavailable upstream despite
+    # still appearing in the catalog - seen in practice with both
+    # meta-llama/llama-3.3-70b-instruct:free and qwen/qwen3-coder:free). This
+    # default was verified working end-to-end (chat + tool-calling) on a real
+    # free account. If it ever stops working, list what your key can actually
+    # access and confirm a candidate responds before switching to it:
     #   curl https://api.anyapi.ai/v1/models -H "Authorization: Bearer $ANYAPI_KEY"
-    anyapi_model: str = "meta-llama/llama-3.3-70b-instruct:free"
+    #   curl https://api.anyapi.ai/v1/chat/completions -H "Authorization: Bearer $ANYAPI_KEY" \
+    #     -H "Content-Type: application/json" -d '{"model": "<candidate>", "messages": [{"role":"user","content":"hola"}]}'
+    anyapi_model: str = "nvidia/nemotron-nano-9b-v2:free"
 
     ai_max_tokens: int = 1024
     ai_temperature: float = 0.4

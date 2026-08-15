@@ -57,12 +57,19 @@ nano .env
   credits) at https://openrouter.ai/models.
 - **AnyAPI**: create a key at https://anyapi.ai, set `ALEX_ANYAPI_API_KEY`
   and `ALEX_AI_PROVIDER=anyapi`. Model ids are `provider/model-name`; the
-  default (`meta-llama/llama-3.3-70b-instruct:free`) works on a free
-  account, but a free key can't access every model - paid ones (e.g.
-  `openai/gpt-4o-mini`) fail with `403 key_model_access_denied` unless your
-  account has credits. See exactly what your key can access with:
+  default (`nvidia/nemotron-nano-9b-v2:free`) was verified working
+  end-to-end (chat + tool-calling) on a real free account. A free key
+  can't access every model though: paid ones (e.g. `openai/gpt-4o-mini`)
+  fail with `403 key_model_access_denied` unless your account has credits,
+  and some free-tier models return `404` even though they're listed
+  (delisted/unavailable upstream - seen in practice with
+  `meta-llama/llama-3.3-70b-instruct:free` and `qwen/qwen3-coder:free`).
+  If you want to switch models, list what your key can access and then
+  confirm the candidate actually responds before putting it in `.env`:
   ```bash
   curl https://api.anyapi.ai/v1/models -H "Authorization: Bearer $ALEX_ANYAPI_API_KEY"
+  curl https://api.anyapi.ai/v1/chat/completions -H "Authorization: Bearer $ALEX_ANYAPI_API_KEY" \
+    -H "Content-Type: application/json" -d '{"model": "<candidate>", "messages": [{"role":"user","content":"hola"}]}'
   ```
 
 `ALEX_API_TOKEN` was already generated for you - copy it, you'll need it to
