@@ -176,6 +176,24 @@ class ALEXCore:
     async def raise_event(self, event: Event) -> None:
         await self.events.handle(event)
 
+    async def _publish_reply(
+        self, conversation_id: str | None, text: str, pending_action_id: str | None = None
+    ) -> None:
+        # Single fan-out point for "ALEX said something in this
+        # conversation" - the server layer (alex/server/ws.py) subscribes
+        # to this and broadcasts it to every connected client as a
+        # chat.reply. This matters beyond the normal chat.message request/
+        # response: resolving a pending confirmation can come from a REST
+        # call (the notification button) with no WebSocket round-trip to
+        # piggyback a direct reply on, so without this the chat window
+        # never learned the outcome even though a separate "notification"
+        # toast did.
+        if conversation_id:
+            await self.event_bus.publish(
+                "message.outgoing",
+                {"conversation_id": conversation_id, "text": text, "pending_action_id": pending_action_id},
+            )
+
     # ------------------------------------------------------------------ #
     # Conversation
     # ------------------------------------------------------------------ #
@@ -206,15 +224,13 @@ class ALEXCore:
             if approved is not None:
                 await self.memory.add_message(conversation_id, "user", text)
                 # resolve_pending_action already persists the assistant's
-                # outcome message to this same conversation_id (it looks it
-                # up via _pending_confirmations before popping it below) -
-                # do not add it again here, or every chat-resolved
-                # confirmation would be written to memory twice.
+                # outcome message to this same conversation_id AND publishes
+                # it via _publish_reply (it looks the conversation up via
+                # _pending_confirmations before popping it below) - don't
+                # repeat either here, or every chat-resolved confirmation
+                # would be written/broadcast twice.
                 result = await self.resolve_pending_action(pending_id, approved)
                 reply_text = result["message"]
-                await self.event_bus.publish(
-                    "message.outgoing", {"conversation_id": conversation_id, "text": reply_text}
-                )
                 return {"conversation_id": conversation_id, "reply": reply_text, "pending_action_id": None}
 
         await self.memory.add_message(conversation_id, "user", text)
@@ -251,7 +267,7 @@ class ALEXCore:
 
         if reply_text:
             await self.memory.add_message(conversation_id, "assistant", reply_text)
-        await self.event_bus.publish("message.outgoing", {"conversation_id": conversation_id, "text": reply_text})
+        await self._publish_reply(conversation_id, reply_text, pending_action_id)
 
         return {
             "conversation_id": conversation_id,
@@ -375,6 +391,7 @@ class ALEXCore:
             )
             if conversation_id:
                 await self.memory.add_message(conversation_id, "assistant", "Vale, cancelado.")
+                await self._publish_reply(conversation_id, "Vale, cancelado.")
             return {"success": True, "message": "Vale, cancelado."}
 
         try:
@@ -385,6 +402,7 @@ class ALEXCore:
             )
             if conversation_id:
                 await self.memory.add_message(conversation_id, "assistant", f"Fallo: {e.message}")
+                await self._publish_reply(conversation_id, f"Fallo: {e.message}")
             return {"success": False, "message": e.message}
 
         await self.notifications.create(
@@ -394,4 +412,5 @@ class ALEXCore:
             conversation_id = await self.memory.latest_conversation_id("voice")
         if conversation_id:
             await self.memory.add_message(conversation_id, "assistant", f"Hecho: {result.content}")
+            await self._publish_reply(conversation_id, f"Hecho: {result.content}")
         return {"success": True, "message": f"Hecho: {result.content}"}

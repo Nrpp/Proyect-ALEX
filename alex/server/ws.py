@@ -24,9 +24,25 @@ class ConnectionManager:
         self._core = core
         self._clients: set[WebSocket] = set()
         core.event_bus.subscribe("notification.created", self._on_notification)
+        core.event_bus.subscribe("message.outgoing", self._on_outgoing_message)
 
     async def _on_notification(self, notification) -> None:
         await self.broadcast({"type": "notification", "notification": notification.to_dict()})
+
+    async def _on_outgoing_message(self, payload: dict) -> None:
+        # Single delivery point for every assistant reply, whichever path
+        # produced it: a normal chat turn, or a confirmation resolved via
+        # the notification button's REST call (which has no WebSocket
+        # round-trip of its own to reply on directly). Broadcasting to all
+        # connected clients rather than just the originating connection
+        # also means a second open client (e.g. desktop + web console at
+        # once) sees the same conversation.
+        await self.broadcast({
+            "type": "chat.reply",
+            "conversation_id": payload.get("conversation_id"),
+            "reply": payload.get("text"),
+            "pending_action_id": payload.get("pending_action_id"),
+        })
 
     async def broadcast(self, message: dict) -> None:
         dead = []
@@ -59,10 +75,14 @@ class ConnectionManager:
         msg_type = data.get("type")
         try:
             if msg_type == "chat.message":
-                result = await self._core.handle_user_message(
+                # No direct reply sent here: handle_user_message() publishes
+                # "message.outgoing" internally, which _on_outgoing_message
+                # broadcasts as "chat.reply" to every connected client
+                # (including this one) - the single delivery path shared
+                # with confirmation outcomes, see _on_outgoing_message above.
+                await self._core.handle_user_message(
                     data.get("text", ""), conversation_id=data.get("conversation_id"), channel="app"
                 )
-                await websocket.send_json({"type": "chat.reply", **result})
 
             elif msg_type == "action.confirm":
                 result = await self._core.resolve_pending_action(
