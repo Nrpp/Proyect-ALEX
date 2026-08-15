@@ -111,6 +111,13 @@ class Settings(BaseSettings):
     home_assistant_url: str = ""  # e.g. http://homeassistant.local:8123
     home_assistant_token: str = ""  # long-lived access token from your HA profile page
 
+    # --- Integration: AlexOS --------------------------------------------------
+    # The personal-OS dashboard (a separate project). No token needed - its
+    # REST API has no authentication of its own (see its docs/ARCHITECTURE.md).
+    # Default assumes AlexOS runs on this same Pi via its production
+    # docker-compose (network_mode: host, api on port 8000).
+    alexos_base_url: str = "http://127.0.0.1:8000"
+
     # --- Integration: Gmail (IMAP) -------------------------------------------
     gmail_address: str = ""
     gmail_app_password: str = ""  # https://myaccount.google.com/apppasswords (needs 2FA on)
