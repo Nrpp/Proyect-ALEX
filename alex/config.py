@@ -69,7 +69,37 @@ class Settings(BaseSettings):
     memory_max_facts_in_prompt: int = 12
 
     # --- Plugins ------------------------------------------------------------
+    # Add "home_assistant", "email", "google_calendar", "ms_todo" once you've
+    # configured their credentials below - not enabled by default since each
+    # needs setup outside ALEX first (see docs/INSTALL_RASPBERRY_PI.md).
     enabled_plugins: list[str] = Field(default_factory=lambda: ["system", "reminders"])
+
+    # --- Integration: Home Assistant -----------------------------------------
+    home_assistant_url: str = ""  # e.g. http://homeassistant.local:8123
+    home_assistant_token: str = ""  # long-lived access token from your HA profile page
+
+    # --- Integration: Gmail (IMAP) -------------------------------------------
+    gmail_address: str = ""
+    gmail_app_password: str = ""  # https://myaccount.google.com/apppasswords (needs 2FA on)
+    gmail_check_interval_seconds: int = 300
+
+    # --- Integration: Google Calendar ----------------------------------------
+    # OAuth2 "installed app" credentials from Google Cloud Console + a refresh
+    # token minted once via scripts/google_calendar_auth.py (run on a machine
+    # with a browser, not the Pi).
+    google_calendar_client_id: str = ""
+    google_calendar_client_secret: str = ""
+    google_calendar_refresh_token: str = ""
+    google_calendar_id: str = "primary"
+    google_calendar_check_interval_seconds: int = 1800
+
+    # --- Integration: Microsoft To Do (Graph API) ----------------------------
+    # Public-client Azure AD app id; auth uses the OAuth2 device-code flow
+    # (no client secret, no redirect URI needed) - first run prints/notifies
+    # a short code to enter at https://microsoft.com/devicelogin.
+    ms_client_id: str = ""
+    ms_tenant: str = "consumers"  # "consumers" for personal MS accounts, "common" for both
+    ms_todo_check_interval_seconds: int = 900
 
     # --- Tools / permissions ---------------------------------------------------
     # Hard kill-switch: tool names listed here are refused regardless of their

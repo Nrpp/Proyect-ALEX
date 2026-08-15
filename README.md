@@ -25,7 +25,10 @@ setup and verification on real hardware.
   levels; the LLM cannot execute a `CONFIRM` tool without you approving it
   through a notification.
 - **Plugins** (`alex/plugins/`) - add integrations without touching the
-  Core. Ships with `system` (Pi health monitoring) and `reminders`.
+  Core. Ships with `system` (Pi health monitoring), `reminders`, and
+  optional integrations for `home_assistant`, `email` (Gmail/IMAP),
+  `google_calendar` and `ms_todo` (Microsoft To Do) - see
+  `docs/INSTALL_RASPBERRY_PI.md` section 10 for credential setup.
 - **Events & notifications** (`alex/events/`, `alex/notifications/`) - rule
   based importance scoring decides ignore/store/notify, with per-event-type
   cooldowns so you don't get spammed.
