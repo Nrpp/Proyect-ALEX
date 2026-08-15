@@ -207,6 +207,75 @@ sudo rm -rf .venv
 ./scripts/install_raspberry_pi.sh              # or --with-voice, as your normal user, no sudo
 ```
 
+## 9. Remote access with Tailscale (optional)
+
+By design, ALEX only binds to your LAN and never opens a port on your
+router (do not port-forward 8787). To reach ALEX from outside your home
+network - e.g. connecting the desktop client from a laptop that isn't on
+your home Wi-Fi - use [Tailscale](https://tailscale.com): it creates a
+private, encrypted, direct connection between your own devices without
+exposing anything to the public Internet.
+
+### 9a. Install Tailscale on the Pi
+
+Run this **on the Pi itself** (SSH in with your own credentials, or use a
+keyboard/monitor - never share your Pi's login password with anyone,
+including in chat):
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+The second command prints a URL - open it in a browser on any device and
+log in (or create a free Tailscale account) to authorize the Pi. Once
+authorized, get the Pi's Tailscale address:
+
+```bash
+tailscale ip -4
+```
+
+This IP (something like `100.x.y.z`) is reachable **only** from your other
+devices once they're also on the same Tailscale network - it does not
+require ALEX's own bind address to change (it already listens on
+`0.0.0.0:8787`, so it's automatically reachable on the Tailscale interface
+too).
+
+### 9b. Install Tailscale on your other devices
+
+On the laptop/phone/PC you want to use as a client, install Tailscale from
+https://tailscale.com/download and log in with the **same account** you
+used for the Pi.
+
+### 9c. Point the desktop client at the Tailscale address
+
+In `clients/desktop_minimal/.env`, set:
+
+```
+ALEX_HOST=<the 100.x.y.z address from step 9a, or the MagicDNS name Tailscale shows for the Pi>
+```
+
+Now the desktop client (and `curl`/`/health` checks) work the same way
+whether you're on your home network or anywhere else with Tailscale
+running.
+
+### 9d. Optional hardening: restrict the port to Tailscale + LAN only
+
+If you want extra defense-in-depth beyond the `ALEX_API_TOKEN` check, you
+can use a firewall (e.g. `ufw`) to only allow port 8787 from your LAN
+subnet and the Tailscale interface (`tailscale0`), rejecting anything else
+- most home routers already make the Pi unreachable from the public
+Internet by default (no port forwarding), so this is optional but tidy:
+
+```bash
+sudo apt-get install -y ufw
+sudo ufw allow from 192.168.0.0/16 to any port 8787 proto tcp
+sudo ufw allow in on tailscale0 to any port 8787 proto tcp
+sudo ufw enable
+```
+
+(Adjust `192.168.0.0/16` to match your actual LAN subnet if different.)
+
 ## Updating
 
 ```bash
