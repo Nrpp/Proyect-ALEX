@@ -40,6 +40,12 @@ def main() -> None:
         host=settings.host,
         port=settings.port,
         log_config=None,  # we own logging via alex.logging_setup
+        # Uvicorn's WebSocket ping defaults (20s/20s) can close a connection
+        # while a long conversational turn is legitimately still in progress
+        # (ALEXCore bounds turns itself via ai_turn_timeout_seconds - this is
+        # just defense in depth so the transport doesn't give up first).
+        ws_ping_interval=20,
+        ws_ping_timeout=120,
     )
 
 
