@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from alex.ai.anyapi_provider import AnyAPIProvider
 from alex.ai.nvidia_provider import NvidiaProvider
 from alex.ai.openrouter_provider import OpenRouterProvider
 from alex.ai.router import build_ai_provider
@@ -26,6 +27,18 @@ def test_router_builds_openrouter_provider():
     assert isinstance(provider, OpenRouterProvider)
     assert provider.name == "openrouter"
     assert "openrouter.ai" in str(provider._client.base_url)
+
+
+def test_router_builds_anyapi_provider():
+    settings = Settings(
+        ai_provider="anyapi",
+        anyapi_api_key="test-key",
+        anyapi_model="openai/gpt-4o-mini",
+    )
+    provider = build_ai_provider(settings)
+    assert isinstance(provider, AnyAPIProvider)
+    assert provider.name == "anyapi"
+    assert "anyapi.ai" in str(provider._client.base_url)
 
 
 def test_router_rejects_unknown_provider():

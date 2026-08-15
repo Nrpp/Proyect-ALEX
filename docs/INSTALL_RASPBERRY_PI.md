@@ -55,6 +55,10 @@ nano .env
   a free-tier model (`ALEX_OPENROUTER_MODEL=meta-llama/llama-3.1-8b-instruct:free`);
   browse other options (including paid ones needing OpenRouter account
   credits) at https://openrouter.ai/models.
+- **AnyAPI**: create a key at https://anyapi.ai, set `ALEX_ANYAPI_API_KEY`
+  and `ALEX_AI_PROVIDER=anyapi`. Model ids are `provider/model-name` (e.g.
+  `ALEX_ANYAPI_MODEL=openai/gpt-4o-mini`, the default) - browse the catalog
+  and pricing/trial credits at https://anyapi.ai.
 
 `ALEX_API_TOKEN` was already generated for you - copy it, you'll need it to
 configure clients.
