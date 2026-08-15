@@ -321,28 +321,51 @@ check every 5 minutes that surfaces new mail (stored, not push-notified, by
 default - see `alex/events/engine.py` if you want it louder). Reading only;
 ALEX does not send email in this version.
 
-### 10c. Google Calendar
+### 10c. Google Calendar and/or Google Tasks
+
+Both use the same OAuth helper script and can share one Google Cloud
+project - do either or both.
 
 1. In https://console.cloud.google.com: create/select a project -> **APIs &
-   Services > Library** -> enable **Google Calendar API**.
+   Services > Library** -> enable **Google Calendar API** and/or **Tasks
+   API** (whichever you're setting up).
 2. **APIs & Services > Credentials > Create Credentials > OAuth client ID**
    -> application type **Desktop app**. Note the Client ID and Client Secret.
+   (You can reuse the same OAuth client for both Calendar and Tasks.)
 3. **On your laptop** (needs a browser - not the Pi):
    ```bash
    cd Proyect-ALEX   # or wherever you cloned the repo locally
-   python3 scripts/google_calendar_auth.py --client-id <id> --client-secret <secret>
-   ```
-   This opens a browser tab to log in and consent, then prints the three
-   lines to add to the Pi's `.env`.
-4. Paste those three lines (`ALEX_GOOGLE_CALENDAR_CLIENT_ID`,
-   `_CLIENT_SECRET`, `_REFRESH_TOKEN`) into the Pi's `.env`.
-5. Add `"google_calendar"` to `ALEX_ENABLED_PLUGINS` and restart.
 
-Gives ALEX `calendar_list_upcoming`, `calendar_create_event`,
-`calendar_delete_event` (confirmation required), plus a background check
-that notifies you ~60 minutes before an event starts.
+   # Calendar only:
+   python3 scripts/google_oauth_auth.py --client-id <id> --client-secret <secret> --scopes calendar
+
+   # Tasks only:
+   python3 scripts/google_oauth_auth.py --client-id <id> --client-secret <secret> --scopes tasks
+
+   # Both at once (one consent screen, one refresh token valid for both):
+   python3 scripts/google_oauth_auth.py --client-id <id> --client-secret <secret> --scopes calendar,tasks
+   ```
+   This opens a browser tab to log in and consent, then prints the `.env`
+   lines to add - `ALEX_GOOGLE_CALENDAR_*` and/or `ALEX_GOOGLE_TASKS_*`
+   depending on which scopes you requested. If you requested both scopes in
+   one run, the same refresh token is printed for both sets of variables -
+   paste it into both.
+4. Paste the printed lines into the Pi's `.env`.
+5. Add `"google_calendar"` and/or `"google_tasks"` to `ALEX_ENABLED_PLUGINS`
+   and restart.
+
+**Google Calendar** gives ALEX `calendar_list_upcoming`,
+`calendar_create_event`, `calendar_delete_event` (confirmation required),
+plus a background check that notifies you ~60 minutes before an event
+starts.
+
+**Google Tasks** gives ALEX `tasks_list`, `tasks_add`, `tasks_complete`,
+plus a background check that notifies you about tasks due within 24 hours.
 
 ### 10d. Microsoft To Do
+
+Skip this if you're using Google Tasks instead - they're two different
+task-management products; you don't need both.
 
 1. In https://portal.azure.com: **Azure Active Directory > App
    registrations > New registration**. Name it "ALEX", leave redirect URI

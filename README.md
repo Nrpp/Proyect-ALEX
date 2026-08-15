@@ -27,7 +27,7 @@ setup and verification on real hardware.
 - **Plugins** (`alex/plugins/`) - add integrations without touching the
   Core. Ships with `system` (Pi health monitoring), `reminders`, and
   optional integrations for `home_assistant`, `email` (Gmail/IMAP),
-  `google_calendar` and `ms_todo` (Microsoft To Do) - see
+  `google_calendar`, `google_tasks` and `ms_todo` (Microsoft To Do) - see
   `docs/INSTALL_RASPBERRY_PI.md` section 10 for credential setup.
 - **Events & notifications** (`alex/events/`, `alex/notifications/`) - rule
   based importance scoring decides ignore/store/notify, with per-event-type

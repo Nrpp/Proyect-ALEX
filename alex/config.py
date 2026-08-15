@@ -85,13 +85,23 @@ class Settings(BaseSettings):
 
     # --- Integration: Google Calendar ----------------------------------------
     # OAuth2 "installed app" credentials from Google Cloud Console + a refresh
-    # token minted once via scripts/google_calendar_auth.py (run on a machine
+    # token minted once via scripts/google_oauth_auth.py (run on a machine
     # with a browser, not the Pi).
     google_calendar_client_id: str = ""
     google_calendar_client_secret: str = ""
     google_calendar_refresh_token: str = ""
     google_calendar_id: str = "primary"
     google_calendar_check_interval_seconds: int = 1800
+
+    # --- Integration: Google Tasks -------------------------------------------
+    # Independent credentials from Google Calendar by default (can be the
+    # same client id/secret/refresh token if minted with both scopes at once
+    # via scripts/google_oauth_auth.py --scopes).
+    google_tasks_client_id: str = ""
+    google_tasks_client_secret: str = ""
+    google_tasks_refresh_token: str = ""
+    google_tasks_list_id: str = "@default"
+    google_tasks_check_interval_seconds: int = 1800
 
     # --- Integration: Microsoft To Do (Graph API) ----------------------------
     # Public-client Azure AD app id; auth uses the OAuth2 device-code flow
