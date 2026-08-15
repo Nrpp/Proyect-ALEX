@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     # a slow/unresponsive provider hangs the whole conversational turn (and
     # the client connection waiting on it) indefinitely.
     ai_request_timeout_seconds: int = 45
+    # Timeout for the ENTIRE turn (all AI <-> tool hops combined, up to
+    # ai_max_tool_hops). A model that loops through several tool calls
+    # without ever finishing could otherwise still hang past
+    # ai_request_timeout_seconds even with every individual call bounded.
+    ai_turn_timeout_seconds: int = 90
 
     # --- Memory -----------------------------------------------------------
     memory_recent_messages: int = 20  # short-term context window size

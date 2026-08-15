@@ -160,6 +160,39 @@ class ALEXCore:
         ]
         tool_specs = self.tools.specs()
 
+        try:
+            reply_text, pending_action_id = await asyncio.wait_for(
+                self._run_conversation_loop(messages, tool_specs, system_prompt),
+                timeout=self.settings.ai_turn_timeout_seconds,
+            )
+        except asyncio.TimeoutError:
+            # Bounds the WHOLE turn (all hops combined), not just one AI call -
+            # a model that loops through several tool calls without ever
+            # finishing could otherwise still hang past ai_request_timeout_seconds.
+            log.warning(
+                "Conversational turn exceeded ai_turn_timeout_seconds=%ds, aborting",
+                self.settings.ai_turn_timeout_seconds,
+            )
+            reply_text = "Esto esta tardando demasiado. Intentalo de nuevo, quizas con una peticion mas simple."
+            pending_action_id = None
+
+        if reply_text:
+            await self.memory.add_message(conversation_id, "assistant", reply_text)
+        await self.event_bus.publish("message.outgoing", {"conversation_id": conversation_id, "text": reply_text})
+
+        return {
+            "conversation_id": conversation_id,
+            "reply": reply_text,
+            "pending_action_id": pending_action_id,
+        }
+
+    async def _run_conversation_loop(
+        self, messages: list[ChatMessage], tool_specs: list, system_prompt: str
+    ) -> tuple[str, str | None]:
+        """The AI -> tool -> AI hop loop, extracted so the whole thing can be
+        wrapped in a single overall timeout by the caller (see
+        ai_turn_timeout_seconds) - bounding total turn latency regardless of
+        how many hops the model takes, not just the latency of one hop."""
         pending_action_id: str | None = None
         reply_text = ""
 
@@ -222,15 +255,7 @@ class ALEXCore:
         else:
             reply_text = reply_text or "He hecho varias comprobaciones pero necesito que me lo repitas de otra forma."
 
-        if reply_text:
-            await self.memory.add_message(conversation_id, "assistant", reply_text)
-        await self.event_bus.publish("message.outgoing", {"conversation_id": conversation_id, "text": reply_text})
-
-        return {
-            "conversation_id": conversation_id,
-            "reply": reply_text,
-            "pending_action_id": pending_action_id,
-        }
+        return reply_text, pending_action_id
 
     async def _run_tool_call(self, call: ToolCall) -> tuple[ChatMessage | None, str | None]:
         """Returns (tool-result ChatMessage, None), or (None, action_id) on ConfirmationRequired."""
