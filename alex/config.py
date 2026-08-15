@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     ai_temperature: float = 0.4
     # Safety cap on the tool-calling loop (AI -> tool -> AI -> ...) per turn.
     ai_max_tool_hops: int = 6
+    # Per-request timeout for a single call to the AI provider. Without this,
+    # a slow/unresponsive provider hangs the whole conversational turn (and
+    # the client connection waiting on it) indefinitely.
+    ai_request_timeout_seconds: int = 45
 
     # --- Memory -----------------------------------------------------------
     memory_recent_messages: int = 20  # short-term context window size

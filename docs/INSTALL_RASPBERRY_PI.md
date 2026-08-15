@@ -246,6 +246,21 @@ sudo rm -rf .venv
 ./scripts/install_raspberry_pi.sh              # or --with-voice, as your normal user, no sudo
 ```
 
+**`/console/` (or another client) shows "PROCESANDO" forever, the input box
+stays locked, and eventually a fresh "Conectado a ALEX" appears without
+ever answering your message**: this was a real bug in earlier versions - a
+single slow/unresponsive AI provider call (or a tool call, e.g.
+`run_shell_command` with a long `timeout_seconds`) could hang the whole
+turn, which could in turn make the WebSocket connection drop and
+reconnect, and the client never recovered from that. `git pull` for the
+fix: `ALEX_AI_REQUEST_TIMEOUT_SECONDS` (default 45s) now bounds every
+single AI provider call, so a turn always finishes (with a clear error
+message) instead of hanging indefinitely, and `/console/` now resets its
+"thinking" state on disconnect and after a 90s safety timeout regardless.
+If a tool call itself is genuinely slow (e.g. a long `run_shell_command`),
+that command may still be running server-side even after the client gives
+up waiting - check `journalctl -u alex -f` before re-issuing it.
+
 ## 9. Remote access with Tailscale (optional)
 
 By design, ALEX only binds to your LAN and never opens a port on your
