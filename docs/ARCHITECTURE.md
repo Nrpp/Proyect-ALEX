@@ -129,7 +129,7 @@ tool-calling path at all. There is no way for the LLM to skip this.
 
 A `Plugin` contributes tools, event handlers, and scheduled background work
 through a `PluginContext`, without the Core needing to know it exists ahead
-of time - enabling it is a config line (`ALEX_ENABLED_PLUGINS`). Six ship
+of time - enabling it is a config line (`ALEX_ENABLED_PLUGINS`). Seven ship
 today:
 
 - **system** (`installed/system_plugin.py`) - a `system_status` READ tool,
@@ -148,16 +148,24 @@ today:
 - **google_calendar** (`installed/google_calendar_plugin.py`) - lists,
   creates and deletes Calendar events via the Calendar v3 REST API,
   authenticated with a long-lived OAuth2 refresh token minted once via
-  `scripts/google_calendar_auth.py` (run on a machine with a browser, not
+  `scripts/google_oauth_auth.py` (run on a machine with a browser, not
   the Pi). Background check raises `calendar.upcoming` ~60 minutes before
   an event starts.
+- **google_tasks** (`installed/google_tasks_plugin.py`) - lists, creates
+  and completes Google Tasks via the Tasks v1 REST API. Shares its OAuth
+  token-refresh logic with google_calendar via
+  `alex/plugins/google_oauth.py` (same helper script, can even share one
+  refresh token if minted with both scopes at once). Background check
+  raises `task.due_soon` for tasks due within 24h.
 - **ms_todo** (`installed/ms_todo_plugin.py`) - lists/creates/completes
   Microsoft To Do tasks via Graph, authenticated with the OAuth2
   device-code flow (no browser needed on the Pi at all - it notifies you
   with a URL + short code to approve from any device on first run).
-  Background check raises `task.due_soon` for tasks due within 24h.
+  Background check raises `task.due_soon` for tasks due within 24h. Use
+  this instead of google_tasks if you're on a Microsoft/Outlook account
+  rather than Google's ecosystem.
 
-The four integrations are disabled by default (each needs its own
+The five integrations are disabled by default (each needs its own
 credentials configured first - see `docs/INSTALL_RASPBERRY_PI.md` section
 10) and, notably, add **zero new pip dependencies**: all OAuth/REST calls
 go through `httpx` (already a core dependency) rather than each vendor's

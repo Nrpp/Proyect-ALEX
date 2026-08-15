@@ -4,7 +4,7 @@ REST API directly over httpx (no Google SDK dependency, consistent with the
 rest of ALEX's integrations).
 
 One-time setup required outside ALEX: create an OAuth2 "Desktop app" client
-in Google Cloud Console, then run `scripts/google_calendar_auth.py` on a
+in Google Cloud Console, then run `scripts/google_oauth_auth.py` on a
 machine with a browser (NOT the Pi) to mint a refresh token - see
 docs/INSTALL_RASPBERRY_PI.md. ALEX only ever holds the long-lived refresh
 token + client id/secret; access tokens are minted on demand and cached in
@@ -13,51 +13,28 @@ memory for their lifetime (~1h).
 from __future__ import annotations
 
 import logging
-import time
 from datetime import datetime, timedelta, timezone
 
 import httpx
 
 from alex.config import get_settings
-from alex.core.errors import ToolError
 from alex.events.models import Event
 from alex.plugins.base import Plugin, PluginContext
+from alex.plugins.google_oauth import GoogleOAuthTokenSource
 from alex.tools.base import PermissionLevel, Tool, ToolResult
 
 log = logging.getLogger(__name__)
 
-TOKEN_URL = "https://oauth2.googleapis.com/token"
 API_BASE = "https://www.googleapis.com/calendar/v3"
 
 
 class GoogleCalendarClient:
     def __init__(self, client_id: str, client_secret: str, refresh_token: str, calendar_id: str):
-        self._client_id = client_id
-        self._client_secret = client_secret
-        self._refresh_token = refresh_token
+        self._oauth = GoogleOAuthTokenSource(client_id, client_secret, refresh_token)
         self.calendar_id = calendar_id
-        self._access_token: str | None = None
-        self._expires_at: float = 0.0
-
-    async def _token(self) -> str:
-        if self._access_token and time.monotonic() < self._expires_at - 60:
-            return self._access_token
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(TOKEN_URL, data={
-                "client_id": self._client_id,
-                "client_secret": self._client_secret,
-                "refresh_token": self._refresh_token,
-                "grant_type": "refresh_token",
-            })
-        if resp.status_code != 200:
-            raise ToolError(f"No se pudo renovar el token de Google Calendar: {resp.text}")
-        data = resp.json()
-        self._access_token = data["access_token"]
-        self._expires_at = time.monotonic() + data.get("expires_in", 3600)
-        return self._access_token
 
     async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
-        token = await self._token()
+        token = await self._oauth.token()
         headers = {"Authorization": f"Bearer {token}"}
         async with httpx.AsyncClient(base_url=API_BASE, headers=headers, timeout=10) as client:
             return await client.request(method, path, **kwargs)
@@ -178,7 +155,7 @@ class GoogleCalendarPlugin(Plugin):
         ]):
             log.warning(
                 "Google Calendar plugin enabled but credentials are not fully set - no tools "
-                "registered. Run scripts/google_calendar_auth.py, see docs/INSTALL_RASPBERRY_PI.md."
+                "registered. Run scripts/google_oauth_auth.py, see docs/INSTALL_RASPBERRY_PI.md."
             )
             return
 
