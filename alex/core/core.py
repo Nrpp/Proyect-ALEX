@@ -103,7 +103,7 @@ class ALEXCore:
             cooldown_seconds=1800,
         )
 
-        for tool in get_builtin_tools(self.memory, self.settings):
+        for tool in get_builtin_tools(self.memory, self.settings, self.notifications):
             self.tools.register(tool)
 
         await self._load_plugins()
