@@ -101,6 +101,15 @@ class Settings(BaseSettings):
     memory_recent_messages: int = 20  # short-term context window size
     memory_max_facts_in_prompt: int = 12
 
+    # --- Web Push (optional - notifications on a phone via the installed PWA) --
+    # Generate with `python3 scripts/gen_vapid_keys.py`. Leave empty to disable
+    # Web Push entirely - the console still works over its WebSocket, this just
+    # adds delivery while it's not open (needed for iOS, which has no other way
+    # to reach an installed PWA - see clients/web_console/README or docs).
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_contact_email: str = ""
+
     # --- Plugins ------------------------------------------------------------
     # Add "home_assistant", "email", "google_calendar", "ms_todo" once you've
     # configured their credentials below - not enabled by default since each

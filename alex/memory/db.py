@@ -117,6 +117,19 @@ CREATE TABLE IF NOT EXISTS reminders (
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_reminders_due ON reminders(status, due_at);
+
+-- Web Push subscriptions (browsers/PWAs, e.g. the console installed on an
+-- iPhone home screen - see alex/notifications/push.py). One row per
+-- browser/device; "endpoint" is the push service URL the browser gave us
+-- and uniquely identifies it, keys are what the Web Push spec needs to
+-- encrypt the payload so only that browser can read it.
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id          TEXT PRIMARY KEY,
+    endpoint    TEXT NOT NULL UNIQUE,
+    p256dh      TEXT NOT NULL,
+    auth        TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
