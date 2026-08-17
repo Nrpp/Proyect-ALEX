@@ -114,7 +114,7 @@ class Settings(BaseSettings):
     # Add "home_assistant", "email", "google_calendar", "ms_todo" once you've
     # configured their credentials below - not enabled by default since each
     # needs setup outside ALEX first (see docs/INSTALL_RASPBERRY_PI.md).
-    enabled_plugins: list[str] = Field(default_factory=lambda: ["system", "reminders"])
+    enabled_plugins: list[str] = Field(default_factory=lambda: ["system", "reminders", "web", "daily_briefing"])
 
     # --- Integration: Home Assistant -----------------------------------------
     home_assistant_url: str = ""  # e.g. http://homeassistant.local:8123
@@ -179,6 +179,22 @@ class Settings(BaseSettings):
 
     # --- Notifications --------------------------------------------------------
     notification_min_priority_push: int = 2  # 0=info..3=critical; below this -> log only
+
+    # --- Integration: web browsing --------------------------------------------
+    # Timeout for a single page fetch. No API key needed - just reads whatever
+    # URL the model is given/finds, same trust model as a person clicking a link.
+    web_fetch_timeout_seconds: int = 10
+
+    # --- Daily briefing ---------------------------------------------------------
+    # Local HH:MM (in `timezone` above) the proactive morning briefing fires,
+    # once per day. News is always included (no credentials needed, see
+    # briefing_news_rss_url); today's calendar events and pending tasks are
+    # added automatically if google_calendar / google_tasks are configured
+    # above, skipped otherwise. Delivered as a normal notification (push/
+    # WebSocket) and, if voice_enabled, spoken aloud - see alex/voice/pipeline.py.
+    briefing_time: str = "07:30"
+    briefing_news_rss_url: str = "https://feeds.bbci.co.uk/mundo/rss.xml"
+    briefing_news_max_items: int = 5
 
     @field_validator("data_dir", "db_path", "log_dir", "tts_model_dir", mode="before")
     @classmethod

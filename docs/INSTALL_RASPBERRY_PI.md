@@ -392,13 +392,13 @@ this is required for them.
 
 ## 10. Optional integrations
 
-None of these are enabled by default - each needs its own credentials set
-up first. After configuring one, add its plugin id to
+10a-10d need their own credentials set up first and are NOT enabled by
+default - after configuring one, add its plugin id to
 `ALEX_ENABLED_PLUGINS` in `.env` (e.g.
 `ALEX_ENABLED_PLUGINS=["system","reminders","home_assistant"]`) and
 `sudo systemctl restart alex`. No credentials, no new dependencies to
 install - all four use only `httpx` and the standard library, already
-installed.
+installed. 10e and 10f need no credentials and ARE enabled by default.
 
 ### 10a. Home Assistant
 
@@ -509,6 +509,35 @@ task-management products; you don't need both.
 
 Gives ALEX `todo_list_tasks`, `todo_add_task`, `todo_complete_task`, plus a
 background check that notifies you about tasks due within 24 hours.
+
+### 10e. Web browsing
+
+On by default (`"web"` in `ALEX_ENABLED_PLUGINS`), no setup needed. Gives
+ALEX `web_fetch`: give it a URL ("mira esta pagina...", or paste a link) and
+it reads the page's title and text back, so you can ask questions about it.
+Public pages only (no login), and it reads whatever the page returns - same
+trust model as clicking a link yourself. No web search (no reliable
+key-free search API to build on) - it needs an actual URL, not a topic to
+search for.
+
+### 10f. Daily briefing
+
+On by default (`"daily_briefing"` in `ALEX_ENABLED_PLUGINS`). Once a day,
+at `ALEX_BRIEFING_TIME` (local time, default `07:30`), ALEX pushes a
+notification with the day's news, plus today's calendar events and pending
+tasks if you've set up 10c above (skipped otherwise - news alone works with
+zero configuration). If `ALEX_VOICE_ENABLED=true`, it's also spoken aloud
+through the speaker, not just pushed. You don't have to wait for the
+scheduled time either - just ask "dime las noticias de hoy" any time.
+
+To change the time or news source:
+```
+ALEX_BRIEFING_TIME=07:30
+ALEX_BRIEFING_NEWS_RSS_URL=https://feeds.bbci.co.uk/mundo/rss.xml
+ALEX_BRIEFING_NEWS_MAX_ITEMS=5
+```
+Any RSS 2.0 feed works for `ALEX_BRIEFING_NEWS_RSS_URL`. Restart after
+changing either.
 
 ## 11. System command execution (`system_exec`) - HIGH RISK, optional
 
