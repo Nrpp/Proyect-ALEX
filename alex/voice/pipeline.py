@@ -37,6 +37,14 @@ SILENCE_END_MS = 900
 MIN_UTTERANCE_MS = 400
 MAX_UTTERANCE_MS = 15_000
 
+# Notification sources spoken aloud proactively (not just replies to a wake-
+# word turn) - deliberately a short allowlist rather than every notification,
+# since most (reminders firing at odd hours, system alerts, confirmation
+# prompts) are better as a push/WS notification than an unsolicited voice
+# interruption. Extend this if a future proactive feature should also be
+# announced by voice.
+ANNOUNCE_SOURCES = {"daily_briefing"}
+
 
 def _is_silence(frame: np.ndarray) -> bool:
     return float(np.abs(frame).mean()) < SILENCE_AMPLITUDE_THRESHOLD
@@ -55,6 +63,12 @@ class VoicePipeline:
         self._stt = SpeechToText(model_size=settings.stt_model_size, language=settings.stt_language)
         self._tts = TextToSpeech(voice_name=settings.tts_voice, model_dir=settings.tts_model_dir)
         self._running = False
+        self._announce_queue: asyncio.Queue[str] = asyncio.Queue()
+        core.event_bus.subscribe("notification.created", self._on_notification)
+
+    def _on_notification(self, notification) -> None:
+        if notification.source in ANNOUNCE_SOURCES:
+            self._announce_queue.put_nowait(notification.body)
 
     async def run(self) -> None:
         self._running = True
@@ -71,7 +85,10 @@ class VoicePipeline:
                     break
 
                 if state == "passive":
-                    if self._wakeword.process(frame):
+                    if not self._announce_queue.empty():
+                        await self._speak(self._announce_queue.get_nowait())
+                        self._wakeword.reset()
+                    elif self._wakeword.process(frame):
                         state = "recording"
                         utterance_frames = []
                         silence_ms = 0
