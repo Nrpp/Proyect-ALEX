@@ -31,6 +31,7 @@ from alex.events.models import Event
 from alex.memory.db import Database
 from alex.memory.manager import MemoryManager
 from alex.notifications.manager import NotificationManager
+from alex.notifications.push import PushSubscriptionStore, WebPushSender
 from alex.plugins.base import PluginContext
 from alex.plugins.loader import PluginManager
 from alex.tools.builtin import get_builtin_tools
@@ -77,6 +78,7 @@ class ALEXCore:
         self.ai: AIProvider = build_ai_provider(settings)
         self.notifications: NotificationManager | None = None
         self.events: EventEngine | None = None
+        self.push_subscriptions: PushSubscriptionStore | None = None
         self.plugins = PluginManager()
         self.scheduler = AsyncIOScheduler()
         self._started = False
@@ -102,6 +104,15 @@ class ALEXCore:
             notify_threshold=0.65,
             cooldown_seconds=1800,
         )
+
+        self.push_subscriptions = PushSubscriptionStore(self.db)
+        webpush_sender = WebPushSender(
+            self.push_subscriptions, self.settings.vapid_private_key, self.settings.vapid_contact_email
+        )
+        if webpush_sender.is_configured:
+            self.event_bus.subscribe("notification.created", webpush_sender.send_to_all)
+        else:
+            log.info("Web Push not configured (ALEX_VAPID_* unset) - skipping, WebSocket delivery still works.")
 
         for tool in get_builtin_tools(self.memory, self.settings, self.notifications):
             self.tools.register(tool)

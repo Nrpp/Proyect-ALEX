@@ -364,6 +364,32 @@ sudo ufw enable
 
 (Adjust `192.168.0.0/16` to match your actual LAN subnet if different.)
 
+### 9e. HTTPS via `tailscale serve` (needed for the iPhone PWA, see section 12)
+
+The web console works fine over plain `http://` on your LAN or over
+Tailscale as-is. The one thing that needs real HTTPS is installing it as
+a Home Screen app on iOS and getting push notifications there - browsers
+(Safari included) refuse to register a Service Worker or Web Push
+subscription outside a "secure context" (`https://` or `localhost`), and
+self-signed certificates don't satisfy that.
+
+Tailscale can front ALEX with a real, trusted certificate for its own
+`*.ts.net` address (issued via Tailscale's own ACME integration - no
+public domain, no separate reverse proxy, no cert renewal cron job to
+maintain yourself) with one command, **on the Pi**:
+
+```bash
+sudo tailscale serve --bg 8787
+```
+
+Run `tailscale serve status` to see the resulting HTTPS address - it
+looks like `https://<pi-machine-name>.<your-tailnet>.ts.net/`, reachable
+only from devices on your tailnet (not the public Internet). That's the
+address to use for the console when you want push notifications (section
+12) - for everything else (desktop client, Android app, `curl`), plain
+`http://` on port 8787 keeps working exactly as before, nothing about
+this is required for them.
+
 ## 10. Optional integrations
 
 None of these are enabled by default - each needs its own credentials set
@@ -534,6 +560,57 @@ With that in place, you can ask ALEX something like "inicia tailscale y
 dame el enlace para autenticar" - it will run `sudo tailscale up`
 (after you confirm), capture the printed authentication URL from the
 output, and give it to you in the reply.
+
+## 12. Phone push notifications via the web console (optional, iPhone included)
+
+The desktop client and Android app (7c) stay connected in the background
+and get notifications that way. A browser tab can't do that - it only
+gets pushed messages while the WebSocket connection is open, i.e. while
+you have the console open and on screen. Web Push fixes that: once the
+console is installed as a Home Screen app, the OS itself wakes it to
+show a notification, exactly like a native app - **this is the only way
+to get ALEX notifications on an iPhone** (there is no native iOS app -
+see the project's own notes on why: no background execution without
+this, and no floating overlay at all, both are iOS platform
+restrictions, not something any app can work around).
+
+1. **Generate a VAPID key pair** (the credential that proves push
+   messages come from your own ALEX, not anyone else) - on the Pi:
+   ```bash
+   python3 scripts/gen_vapid_keys.py
+   ```
+   Paste the three printed lines into `.env` (fill in your own email for
+   `ALEX_VAPID_CONTACT_EMAIL` - it's only ever sent to the push service
+   as a contact point, never shown to you or anyone else):
+   ```
+   ALEX_VAPID_PUBLIC_KEY=...
+   ALEX_VAPID_PRIVATE_KEY=...
+   ALEX_VAPID_CONTACT_EMAIL=you@example.com
+   ```
+2. **Restart ALEX**:
+   ```bash
+   sudo systemctl restart alex
+   ```
+3. **Set up HTTPS** via section 9e above if you haven't already
+   (`sudo tailscale serve --bg 8787` on the Pi) - required specifically
+   for the install-as-app + push step below, not for anything else.
+4. **On the iPhone** (Tailscale app installed and logged into the same
+   tailnet as the Pi, per 9b): open **Safari** (must be Safari, not
+   Chrome/Firefox - only Safari can install a Home Screen app on iOS) at
+   the `https://....ts.net/console/` address from step 3, connect once
+   with the Pi's host/port left as just the `....ts.net` hostname (leave
+   the **port field empty** - `tailscale serve` puts HTTPS on 443, the
+   implicit default) and your `ALEX_API_TOKEN`.
+5. Tap the **Share** button → **Add to Home Screen**. This installed
+   copy, not the regular Safari tab, is what can receive push - opening
+   `https://.../console/` in a normal tab won't work for this.
+6. Open the app from the Home Screen icon, tap the 🔔 button in the
+   header, and allow notifications when iOS asks.
+
+From then on, anything that reaches `send_notification` (including
+things ALEX decides to notify you about on its own within a chat turn)
+or fires as a reminder shows up as a real iOS notification - lock screen
+included - even with the app fully closed.
 
 ## Updating
 

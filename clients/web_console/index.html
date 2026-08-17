@@ -2,8 +2,18 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>ALEX // Console</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#04070a" />
+<!-- iOS ignores the manifest above for home-screen install metadata (Safari-only
+     quirk) - these three tags are what it actually reads. apple-touch-icon must be
+     a PNG, not SVG or the manifest's own icons. -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="ALEX" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" href="icons/icon-192.png" />
 <style>
   :root{
     --bg:#04070a;
@@ -98,6 +108,7 @@
     width:28px; height:28px; cursor:pointer; font-family:var(--mono); border-radius:1px;
   }
   header button.icon:hover{ color:var(--cyan); border-color:var(--cyan); }
+  header button.icon.active{ color:var(--cyan); border-color:var(--cyan); box-shadow:0 0 8px rgba(34,232,255,0.4); }
 
   main{ flex:1; display:flex; min-height:0; }
 
@@ -221,7 +232,8 @@
       <div id="connect-error"></div>
     </div>
     <div id="connect-hint">La direccion y el token se guardan solo en este navegador (localStorage).
-      Encuentra el token en el .env de tu Raspberry Pi (ALEX_API_TOKEN).</div>
+      Encuentra el token en el .env de tu Raspberry Pi (ALEX_API_TOKEN). Deja el puerto
+      vacio si accedes por HTTPS a traves de un proxy (ej. <code>tailscale serve</code>).</div>
   </div>
 
   <div id="app">
@@ -233,6 +245,7 @@
       </div>
       <div class="right">
         <span id="clock">--:--:--</span>
+        <button class="icon" id="push-btn" title="Activar notificaciones push" style="display:none;">🔔</button>
         <button class="icon" id="settings-btn" title="Cambiar conexion">⚙</button>
       </div>
     </header>
@@ -287,19 +300,32 @@
   function cfg() {
     return {
       host: localStorage.getItem("alex_host") || "",
-      port: localStorage.getItem("alex_port") || "8787",
+      // No forced "8787" fallback: an empty port means "use the scheme's
+      // default port" (443/80), needed when ALEX sits behind a reverse
+      // proxy (e.g. `tailscale serve`) rather than being hit directly.
+      port: localStorage.getItem("alex_port") || "",
       token: localStorage.getItem("alex_token") || "",
     };
   }
 
-  function apiBase() {
+  // Reuses whatever scheme this page itself was loaded with, so the
+  // console keeps working whether ALEX is reached over plain http:// (LAN)
+  // or https:// (behind a TLS-terminating proxy) - hardcoding one broke
+  // the other, and https pages can't fetch() http:// resources anyway
+  // (mixed content is blocked by the browser).
+  function hostPort() {
     const c = cfg();
-    return `http://${c.host}:${c.port}`;
+    return c.port ? `${c.host}:${c.port}` : c.host;
+  }
+
+  function apiBase() {
+    const proto = location.protocol === "https:" ? "https" : "http";
+    return `${proto}://${hostPort()}`;
   }
 
   function wsUrl() {
-    const c = cfg();
-    return `ws://${c.host}:${c.port}/ws?token=${encodeURIComponent(c.token)}&client_id=${clientId}`;
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    return `${proto}://${hostPort()}/ws?token=${encodeURIComponent(cfg().token)}&client_id=${clientId}`;
   }
 
   // ---------------- Connect screen ----------------
@@ -315,7 +341,7 @@
 
   $("connect-btn").addEventListener("click", () => {
     const host = $("in-host").value.trim();
-    const port = $("in-port").value.trim() || "8787";
+    const port = $("in-port").value.trim();
     const token = $("in-token").value.trim();
     if (!host) {
       $("connect-error").textContent = "Falta el host de la Raspberry Pi.";
@@ -426,6 +452,97 @@
     }
   }
 
+  // ---------------- Web Push ----------------
+  // Reaches this device even while the console isn't open (e.g. installed
+  // as a home-screen app on iOS 16.4+) - the WebSocket above only works
+  // while a tab/app is actually running. Requires a secure context
+  // (https:// or localhost) and the server to have VAPID keys configured
+  // (see scripts/gen_vapid_keys.py) - the button just hides itself if
+  // either isn't true, rather than erroring.
+  const pushBtn = $("push-btn");
+
+  function pushSupported() {
+    return window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window;
+  }
+
+  function urlBase64ToUint8Array(base64) {
+    const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+    const raw = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
+  }
+
+  async function getExistingPushSubscription() {
+    if (!pushSupported()) return null;
+    const reg = await navigator.serviceWorker.ready.catch(() => null);
+    return reg ? reg.pushManager.getSubscription() : null;
+  }
+
+  async function updatePushButton() {
+    if (!pushSupported()) { pushBtn.style.display = "none"; return; }
+    pushBtn.style.display = "";
+    const sub = await getExistingPushSubscription();
+    pushBtn.classList.toggle("active", !!sub);
+    pushBtn.title = sub ? "Notificaciones activas (pulsa para desactivar)" : "Activar notificaciones push";
+  }
+
+  async function subscribeToPush() {
+    const reg = await navigator.serviceWorker.ready;
+    const res = await fetch(`${apiBase()}/push/vapid_public_key`, {
+      headers: { "Authorization": "Bearer " + cfg().token },
+    });
+    const data = await res.json();
+    if (!data.configured) {
+      addMessage("sys", "El servidor no tiene Web Push configurado (faltan las claves VAPID - ver scripts/gen_vapid_keys.py).");
+      return;
+    }
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(data.public_key),
+    });
+    const json = sub.toJSON();
+    await fetch(`${apiBase()}/push/subscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + cfg().token },
+      body: JSON.stringify({ endpoint: json.endpoint, keys: json.keys }),
+    });
+    addMessage("sys", "Notificaciones push activadas en este dispositivo.");
+  }
+
+  async function unsubscribeFromPush() {
+    const sub = await getExistingPushSubscription();
+    if (!sub) return;
+    const endpoint = sub.endpoint;
+    await sub.unsubscribe();
+    await fetch(`${apiBase()}/push/unsubscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + cfg().token },
+      body: JSON.stringify({ endpoint }),
+    });
+    addMessage("sys", "Notificaciones push desactivadas en este dispositivo.");
+  }
+
+  pushBtn.addEventListener("click", async () => {
+    try {
+      if (Notification.permission === "denied") {
+        addMessage("sys", "Los permisos de notificacion estan bloqueados para este sitio - revisalos en los ajustes del navegador.");
+        return;
+      }
+      const existing = await getExistingPushSubscription();
+      if (existing) {
+        await unsubscribeFromPush();
+      } else {
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") return;
+        await subscribeToPush();
+      }
+    } catch (e) {
+      console.error(e);
+      addMessage("sys", "Error con las notificaciones push: " + e.message);
+    } finally {
+      updatePushButton();
+    }
+  });
+
   // ---------------- WebSocket ----------------
   function connectWs() {
     setStatus("connecting");
@@ -514,6 +631,10 @@
     addMessage("sys", "Iniciando enlace con ALEX...");
     connectWs();
     msgInput.focus();
+    if (pushSupported()) {
+      navigator.serviceWorker.register("sw.js").catch((e) => console.error("SW register failed", e));
+    }
+    updatePushButton();
   }
 
   boot();

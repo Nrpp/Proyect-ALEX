@@ -40,6 +40,20 @@ class NotificationStatusRequest(BaseModel):
     status: str
 
 
+class PushSubscriptionKeys(BaseModel):
+    p256dh: str
+    auth: str
+
+
+class PushSubscribeRequest(BaseModel):
+    endpoint: str
+    keys: PushSubscriptionKeys
+
+
+class PushUnsubscribeRequest(BaseModel):
+    endpoint: str
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     core = ALEXCore(settings)
@@ -144,6 +158,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def cancel_reminder(reminder_id: str):
         ok = await core.memory.cancel_reminder(reminder_id)
         return {"success": ok}
+
+    # --------------------------------------------------------------- #
+    # Web Push (optional - lets the console reach a phone, including an
+    # iPhone via its installed PWA, even while the console isn't open)
+    # --------------------------------------------------------------- #
+    @app.get("/push/vapid_public_key", dependencies=[Depends(require_token)])
+    async def get_vapid_public_key():
+        return {"configured": bool(settings.vapid_public_key), "public_key": settings.vapid_public_key}
+
+    @app.post("/push/subscribe", dependencies=[Depends(require_token)])
+    async def push_subscribe(req: PushSubscribeRequest):
+        await core.push_subscriptions.add(req.endpoint, req.keys.p256dh, req.keys.auth)
+        return {"success": True}
+
+    @app.post("/push/unsubscribe", dependencies=[Depends(require_token)])
+    async def push_unsubscribe(req: PushUnsubscribeRequest):
+        await core.push_subscriptions.remove(req.endpoint)
+        return {"success": True}
 
     # --------------------------------------------------------------- #
     # WebSocket - persistent, real-time channel for clients

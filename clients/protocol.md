@@ -93,6 +93,9 @@ All require `Authorization: Bearer <ALEX_API_TOKEN>` except `/health`.
 - `POST /notifications/{id}/status` `{status}` -> mark `delivered` / `dismissed` / `acted`
 - `GET /reminders` -> pending reminders, `[{id, text, due_at}]`, ordered by `due_at` ascending
 - `DELETE /reminders/{id}` -> `{success}`; cancels a pending reminder (creating one is chat-only, via the `set_reminder` tool, since the AI resolves relative times like "en 30 minutos")
+- `GET /push/vapid_public_key` -> `{configured, public_key}` - Web Push public key, for a browser's `PushManager.subscribe()`. `configured` is `false` (and `public_key` empty) if `ALEX_VAPID_*` isn't set.
+- `POST /push/subscribe` `{endpoint, keys: {p256dh, auth}}` -> `{success}`; stores a browser's `PushSubscription` (from `pushManager.subscribe(...).toJSON()`) so the server can push to it later - see `clients/web_console` for the full flow.
+- `POST /push/unsubscribe` `{endpoint}` -> `{success}`
 
 ## Extending the protocol
 
