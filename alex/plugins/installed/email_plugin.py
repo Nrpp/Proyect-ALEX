@@ -1,20 +1,22 @@
 """
-Email plugin - reads unread Gmail messages over IMAP using an app password
+Email plugin - reads and sends Gmail messages using an app password
 (https://myaccount.google.com/apppasswords, requires 2FA on the Google
-account). Deliberately IMAP + app password rather than full OAuth: it's a
-few minutes of setup instead of registering a Cloud project, and reading a
-mailbox doesn't need broader API scopes.
+account) over IMAP (read) and SMTP (send). Deliberately app password rather
+than full OAuth: it's a few minutes of setup instead of registering a Cloud
+project, and neither reading nor sending mail needs broader API scopes.
 
-Sending mail is intentionally NOT implemented in this first version - only
-reading/marking-read. IMAP calls are blocking, so every call runs off the
-event loop via run_in_executor.
+Sending is CONFIRM-gated (same reasoning as run_shell_command / alexos_action:
+a real, externally-visible side effect once approved). IMAP/SMTP calls are
+blocking, so every call runs off the event loop via run_in_executor.
 """
 from __future__ import annotations
 
 import email
 import imaplib
 import logging
+import smtplib
 from email.header import decode_header
+from email.mime.text import MIMEText
 
 from alex.config import get_settings
 from alex.events.models import Event
@@ -24,6 +26,8 @@ from alex.tools.base import PermissionLevel, Tool, ToolResult
 log = logging.getLogger(__name__)
 
 IMAP_HOST = "imap.gmail.com"
+SMTP_HOST = "smtp.gmail.com"
+SMTP_PORT = 465
 
 
 def _decode(value: str) -> str:
@@ -74,6 +78,16 @@ def _mark_read(address: str, app_password: str, uid: str) -> None:
         conn.logout()
 
 
+def _send(address: str, app_password: str, to: str, subject: str, body: str) -> None:
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = address
+    msg["To"] = to
+    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=IMAP_TIMEOUT_SECONDS) as conn:
+        conn.login(address, app_password)
+        conn.sendmail(address, [to], msg.as_string())
+
+
 class EmailCheckUnreadTool(Tool):
     name = "email_check_unread"
     description = "Consulta los correos no leidos mas recientes de la bandeja de entrada."
@@ -117,9 +131,33 @@ class EmailMarkReadTool(Tool):
         return ToolResult(success=True, content=f"Correo {uid} marcado como leido.")
 
 
+class EmailSendTool(Tool):
+    name = "email_send"
+    description = "Envia un correo desde la cuenta de Alex. Requiere confirmacion antes de enviarse."
+    permission_level = PermissionLevel.CONFIRM
+    parameters = {
+        "type": "object",
+        "properties": {
+            "to": {"type": "string", "description": "Direccion de correo del destinatario."},
+            "subject": {"type": "string", "description": "Asunto del correo."},
+            "body": {"type": "string", "description": "Cuerpo del correo, texto plano."},
+        },
+        "required": ["to", "subject", "body"],
+    }
+
+    def __init__(self, address: str, app_password: str, loop_executor):
+        self._address = address
+        self._app_password = app_password
+        self._run = loop_executor
+
+    async def run(self, to: str, subject: str, body: str) -> ToolResult:
+        await self._run(_send, self._address, self._app_password, to, subject, body)
+        return ToolResult(success=True, content=f"Correo enviado a {to}.")
+
+
 class EmailPlugin(Plugin):
     id = "email"
-    name = "Email (Gmail IMAP)"
+    name = "Email (Gmail)"
     version = "0.1.0"
 
     async def setup(self, ctx: PluginContext) -> None:
@@ -145,6 +183,7 @@ class EmailPlugin(Plugin):
 
         ctx.register_tool(EmailCheckUnreadTool(self._address, self._app_password, run_blocking))
         ctx.register_tool(EmailMarkReadTool(self._address, self._app_password, run_blocking))
+        ctx.register_tool(EmailSendTool(self._address, self._app_password, run_blocking))
         ctx.schedule_interval(
             lambda: self._check(ctx), settings.gmail_check_interval_seconds, "email_plugin_check"
         )

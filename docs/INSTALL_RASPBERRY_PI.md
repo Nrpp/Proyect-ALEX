@@ -417,7 +417,7 @@ Gives ALEX `ha_get_state`, `ha_list_entities` and `ha_call_service` (the
 last one always asks for confirmation before acting, since it controls real
 devices).
 
-### 10b. Gmail (IMAP)
+### 10b. Gmail (IMAP + SMTP)
 
 1. Turn on 2-Step Verification on the Google account if it isn't already
    (required for app passwords): https://myaccount.google.com/security
@@ -430,10 +430,11 @@ devices).
    ```
 4. Add `"email"` to `ALEX_ENABLED_PLUGINS` and restart.
 
-Gives ALEX `email_check_unread` and `email_mark_read`, plus a background
-check every 5 minutes that surfaces new mail (stored, not push-notified, by
-default - see `alex/events/engine.py` if you want it louder). Reading only;
-ALEX does not send email in this version.
+Gives ALEX `email_check_unread`, `email_mark_read` and `email_send` (the
+last one always asks for confirmation before actually sending), plus a
+background check every 5 minutes that surfaces new mail (stored, not
+push-notified, by default - see `alex/events/engine.py` if you want it
+louder). Sending reuses the same app password over SMTP - no extra setup.
 
 ### 10c. Google Calendar and/or Google Tasks
 
