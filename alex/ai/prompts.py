@@ -23,8 +23,21 @@ Como te comportas:
 """
 
 
-def build_system_prompt(assistant_name: str, owner_name: str, context: dict) -> str:
+def build_system_prompt(
+    assistant_name: str, owner_name: str, context: dict, plugins: list[tuple[str, str]] | None = None
+) -> str:
     parts = [PERSONALITY.format(assistant_name=assistant_name, owner_name=owner_name)]
+
+    if plugins:
+        plugin_list = ", ".join(f"{name} ({plugin_id})" for plugin_id, name in plugins)
+        parts.append(
+            "Tus propios modulos/integraciones activos ahora mismo (cargados dentro de ti, con "
+            "herramientas que puedes llamar directamente): " + plugin_list + ". "
+            "Esta es la lista que debes dar si te preguntan que modulos o integraciones tienes. "
+            "No la confundas con AlexOS: eso es un panel/dashboard aparte que corre en la misma "
+            "maquina; solo lo consultas a traves de las herramientas alexos_* cuando el usuario "
+            "pregunta especificamente por AlexOS, no cuando pregunta por tus propios modulos."
+        )
 
     facts: list[Fact] = context.get("facts") or []
     if facts:
