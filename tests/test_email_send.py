@@ -1,39 +1,42 @@
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+import base64
+import email
+from unittest.mock import AsyncMock
 
 import pytest
 
-from alex.plugins.installed.email_plugin import EmailSendTool
+from alex.plugins.installed.email_plugin import EmailSendTool, GmailClient
 from alex.tools.base import PermissionLevel
 
 pytestmark = pytest.mark.asyncio
 
 
-async def _run_blocking(fn, *args):
-    return fn(*args)
-
-
 async def test_tool_is_confirm_gated():
-    tool = EmailSendTool("alex@gmail.com", "app-pass", _run_blocking)
+    client = GmailClient("id", "secret", "refresh", "alex@gmail.com")
+    tool = EmailSendTool(client)
     assert tool.permission_level == PermissionLevel.CONFIRM
 
 
-async def test_send_logs_in_and_sends_via_smtp_ssl():
-    tool = EmailSendTool("alex@gmail.com", "app-pass", _run_blocking)
-    mock_conn = MagicMock()
-    mock_conn.__enter__.return_value = mock_conn
+async def test_send_posts_a_base64url_encoded_rfc822_message():
+    client = GmailClient("id", "secret", "refresh", "alex@gmail.com")
+    mock_response = AsyncMock()
+    mock_response.raise_for_status = lambda: None
+    client._request = AsyncMock(return_value=mock_response)
 
-    with patch("smtplib.SMTP_SSL", return_value=mock_conn) as mock_smtp:
-        result = await tool.run(to="friend@example.com", subject="Hola", body="Que tal")
+    tool = EmailSendTool(client)
+    result = await tool.run(to="friend@example.com", subject="Hola", body="Que tal")
 
     assert result.success is True
     assert "friend@example.com" in result.content
-    mock_smtp.assert_called_once_with("smtp.gmail.com", 465, timeout=15)
-    mock_conn.login.assert_called_once_with("alex@gmail.com", "app-pass")
-    assert mock_conn.sendmail.call_count == 1
-    from_addr, to_addrs, raw_message = mock_conn.sendmail.call_args.args
-    assert from_addr == "alex@gmail.com"
-    assert to_addrs == ["friend@example.com"]
-    assert "Hola" in raw_message
-    assert "Que tal" in raw_message
+    client._request.assert_awaited_once()
+    method, path = client._request.await_args.args
+    assert method == "POST"
+    assert path == "/users/me/messages/send"
+    raw = client._request.await_args.kwargs["json"]["raw"]
+    decoded = base64.urlsafe_b64decode(raw.encode())
+    msg = email.message_from_bytes(decoded)
+    assert msg["To"] == "friend@example.com"
+    assert msg["Subject"] == "Hola"
+    assert msg["From"] == "alex@gmail.com"
+    assert msg.get_payload() == "Que tal"

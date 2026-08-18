@@ -127,9 +127,15 @@ class Settings(BaseSettings):
     # docker-compose (network_mode: host, api on port 8000).
     alexos_base_url: str = "http://127.0.0.1:8000"
 
-    # --- Integration: Gmail (IMAP) -------------------------------------------
-    gmail_address: str = ""
-    gmail_app_password: str = ""  # https://myaccount.google.com/apppasswords (needs 2FA on)
+    # --- Integration: Gmail (Gmail API via OAuth) -----------------------------
+    # OAuth2 "installed app" credentials from Google Cloud Console + a refresh
+    # token minted once via scripts/google_oauth_auth.py --scopes gmail (run on
+    # a machine with a browser, not the Pi). Same client id/secret as Calendar/
+    # Tasks works fine if you enable the Gmail API on that same Cloud project.
+    gmail_address: str = ""  # used as the From: header on mail ALEX sends
+    google_gmail_client_id: str = ""
+    google_gmail_client_secret: str = ""
+    google_gmail_refresh_token: str = ""
     gmail_check_interval_seconds: int = 300
 
     # --- Integration: Google Calendar ----------------------------------------

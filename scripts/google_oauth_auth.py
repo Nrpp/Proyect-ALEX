@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 One-time helper to mint a Google OAuth2 refresh token for ALEX (used by the
-google_calendar and google_tasks plugins).
+google_calendar, google_tasks and email/Gmail plugins).
 
 Run this on a machine WITH A BROWSER (your laptop/desktop) - not on the
 headless Raspberry Pi. It opens a browser tab for you to log in and
@@ -12,7 +12,8 @@ Uses only the Python standard library - no extra pip install needed.
 
 Prerequisites (Google Cloud Console, https://console.cloud.google.com):
   1. Create a project (or use an existing one).
-  2. Enable the API(s) you need: "Google Calendar API" and/or "Tasks API".
+  2. Enable the API(s) you need: "Google Calendar API", "Tasks API" and/or
+     "Gmail API".
   3. Create OAuth2 credentials of type "Desktop app".
   4. Note the Client ID and Client Secret.
 
@@ -23,9 +24,12 @@ Usage:
     # Tasks only:
     python3 google_oauth_auth.py --client-id ... --client-secret ... --scopes tasks
 
-    # Both at once with a single consent (reuse the same refresh token for
-    # both plugins' config instead of authorizing twice):
-    python3 google_oauth_auth.py --client-id ... --client-secret ... --scopes calendar,tasks
+    # Gmail only (read/mark-read/send - everything but permanent delete):
+    python3 google_oauth_auth.py --client-id ... --client-secret ... --scopes gmail
+
+    # Several at once with a single consent (reuse the same refresh token for
+    # each plugin's config instead of authorizing repeatedly):
+    python3 google_oauth_auth.py --client-id ... --client-secret ... --scopes calendar,tasks,gmail
 """
 from __future__ import annotations
 
@@ -45,6 +49,8 @@ REDIRECT_URI = f"http://localhost:{REDIRECT_PORT}"
 SCOPE_URLS = {
     "calendar": "https://www.googleapis.com/auth/calendar",
     "tasks": "https://www.googleapis.com/auth/tasks",
+    # All read/write except permanent delete - covers read, mark-as-read and send.
+    "gmail": "https://www.googleapis.com/auth/gmail.modify",
 }
 
 
@@ -134,6 +140,10 @@ def main() -> None:
         print(f"ALEX_GOOGLE_TASKS_CLIENT_ID={args.client_id}")
         print(f"ALEX_GOOGLE_TASKS_CLIENT_SECRET={args.client_secret}")
         print(f"ALEX_GOOGLE_TASKS_REFRESH_TOKEN={refresh_token}")
+    if "gmail" in requested:
+        print(f"ALEX_GOOGLE_GMAIL_CLIENT_ID={args.client_id}")
+        print(f"ALEX_GOOGLE_GMAIL_CLIENT_SECRET={args.client_secret}")
+        print(f"ALEX_GOOGLE_GMAIL_REFRESH_TOKEN={refresh_token}")
 
 
 if __name__ == "__main__":
