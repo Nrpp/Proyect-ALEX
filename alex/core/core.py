@@ -246,7 +246,10 @@ class ALEXCore:
 
         await self.memory.add_message(conversation_id, "user", text)
         context = await self.memory.build_context_bundle(conversation_id, text)
-        system_prompt = build_system_prompt(self.settings.assistant_name, self.settings.owner_name, context)
+        plugin_list = [(p.id, p.name) for p in self.plugins.all()]
+        system_prompt = build_system_prompt(
+            self.settings.assistant_name, self.settings.owner_name, context, plugin_list
+        )
         if pending_id:
             pending = self.permissions.get_pending(pending_id)
             system_prompt += (
