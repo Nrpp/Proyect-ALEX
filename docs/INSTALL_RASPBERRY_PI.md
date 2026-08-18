@@ -417,24 +417,38 @@ Gives ALEX `ha_get_state`, `ha_list_entities` and `ha_call_service` (the
 last one always asks for confirmation before acting, since it controls real
 devices).
 
-### 10b. Gmail (IMAP + SMTP)
+### 10b. Gmail
 
-1. Turn on 2-Step Verification on the Google account if it isn't already
-   (required for app passwords): https://myaccount.google.com/security
-2. Create an app password: https://myaccount.google.com/apppasswords ->
-   name it "ALEX" -> copy the 16-character password.
-3. In the Pi's `.env`:
+Uses the same OAuth helper script as Calendar/Tasks below - it can share the
+same Google Cloud project and even the same OAuth client (just enable the
+Gmail API on it too).
+
+1. In https://console.cloud.google.com: create/select a project -> **APIs &
+   Services > Library** -> enable **Gmail API**.
+2. **APIs & Services > Credentials > Create Credentials > OAuth client ID**
+   -> application type **Desktop app** (skip this if you already made one
+   for Calendar/Tasks - reuse it). Note the Client ID and Client Secret.
+3. **On your laptop** (needs a browser - not the Pi):
+   ```bash
+   cd Proyect-ALEX   # or wherever you cloned the repo locally
+   python3 scripts/google_oauth_auth.py --client-id <id> --client-secret <secret> --scopes gmail
+   ```
+   This opens a browser tab to log in and consent, then prints the
+   `ALEX_GOOGLE_GMAIL_*` lines to add to `.env`.
+4. In the Pi's `.env`:
    ```
    ALEX_GMAIL_ADDRESS=you@gmail.com
-   ALEX_GMAIL_APP_PASSWORD=<the 16-char app password, no spaces>
+   ALEX_GOOGLE_GMAIL_CLIENT_ID=<printed above>
+   ALEX_GOOGLE_GMAIL_CLIENT_SECRET=<printed above>
+   ALEX_GOOGLE_GMAIL_REFRESH_TOKEN=<printed above>
    ```
-4. Add `"email"` to `ALEX_ENABLED_PLUGINS` and restart.
+5. Add `"email"` to `ALEX_ENABLED_PLUGINS` and restart.
 
 Gives ALEX `email_check_unread`, `email_mark_read` and `email_send` (the
 last one always asks for confirmation before actually sending), plus a
 background check every 5 minutes that surfaces new mail (stored, not
 push-notified, by default - see `alex/events/engine.py` if you want it
-louder). Sending reuses the same app password over SMTP - no extra setup.
+louder).
 
 ### 10c. Google Calendar and/or Google Tasks
 
