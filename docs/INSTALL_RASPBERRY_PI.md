@@ -167,11 +167,12 @@ same confirm/dismiss actions as the desktop client.
 The source is `clients/web_console/index.html` if you want to reskin it -
 it's a single self-contained file, no dependencies.
 
-## 7c. Android app (background notifications + overlay)
+## 7c. Android app (background notifications, overlay, and chat)
 
 For a phone that stays connected to ALEX in the background and can pop a
 notification/overlay on top of whatever app you're using for anything
-important, build and install the native Android client:
+important - plus a Chat screen to talk to ALEX directly - build and install
+the native Android client:
 
 ```bash
 cd clients/android

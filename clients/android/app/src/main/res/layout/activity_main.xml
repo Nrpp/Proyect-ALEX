@@ -104,6 +104,13 @@
             android:layout_height="wrap_content"
             android:text="@string/btn_stop" />
 
+        <Button
+            android:id="@+id/btn_chat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="@string/btn_chat" />
+
         <TextView
             android:id="@+id/text_status"
             android:layout_width="match_parent"

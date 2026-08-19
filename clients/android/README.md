@@ -4,7 +4,11 @@ A native Android app that keeps a persistent background connection to ALEX
 (see `clients/protocol.md`) so your phone can receive reminders/events as
 real Android notifications, and show an on-top overlay for anything ALEX
 marks as truly important - the mobile equivalent of
-`clients/desktop_minimal`.
+`clients/desktop_minimal`. It also has a **Chat** screen (`ChatActivity`)
+for talking to ALEX directly, the equivalent of what iOS gets by adding
+`/console/` (the web console PWA) to its home screen - Android has no
+matching "install a web page as an app" story built into this app, so it's
+a real screen instead.
 
 ## What it does
 
@@ -24,10 +28,16 @@ marks as truly important - the mobile equivalent of
   endpoints as every other client (`POST /actions/{id}/confirm`,
   `POST /notifications/{id}/status`).
 - Optional: start automatically on phone boot.
-
-This app is intentionally **not** a chat client - use `/console/` or the
-desktop app to talk to ALEX. Its job is background connectivity and
-getting your attention when it matters.
+- **`ChatActivity`** ("CHAT CON ALEX" on the main screen) - a text
+  conversation with ALEX, same `chat.message`/`chat.reply` WebSocket
+  messages as `clients/web_console`, same "ALEX_"/"TU_" labeling for a
+  consistent look across clients. Opens its own short-lived WebSocket
+  (closed when you leave the screen) rather than reusing
+  `AlexConnectionService`'s - the server already supports any number of
+  simultaneous clients per device, so this stays simple and doesn't touch
+  the foreground service's reconnect/notification logic. The background
+  service (if running) keeps receiving push notifications independently,
+  whether or not the Chat screen is open.
 
 ## Build
 
@@ -51,11 +61,13 @@ install it with `adb install app-debug.apk` or by copying it to the phone.
 > This client was actually built (`assembleDebug`, not just read) against
 > Android SDK 34 / Gradle 8.14.3 / AGP 8.5.0 / Kotlin 1.9.24 while writing
 > this project - `BUILD SUCCESSFUL`, zero errors, zero warnings, valid
-> manifest/permissions verified with `aapt dump badging`. What that
+> manifest/permissions verified with `aapt dump badging`. Re-verified
+> (`BUILD SUCCESSFUL` again) after adding `ChatActivity`. What that
 > doesn't cover: the actual WebSocket connection, overlay permission flow,
-> and notification behavior on a real device still need to be verified on
-> your phone - a successful build proves the code compiles and packages
-> correctly, not that the runtime behavior is correct.
+> chat round-trip, and notification behavior on a real device still need
+> to be verified on your phone - a successful build proves the code
+> compiles and packages correctly, not that the runtime behavior is
+> correct.
 
 ## Setup on the phone
 
@@ -75,6 +87,9 @@ install it with `adb install app-debug.apk` or by copying it to the phone.
    top of whatever app you're in.
 7. Optionally enable **"Iniciar automaticamente al arrancar el telefono"**
    so the service comes back after a reboot.
+8. Tap **CHAT CON ALEX** any time to open a text conversation - it connects
+   on its own the moment you open the screen, no need to have the
+   background service running first.
 
 ## Notes / known limitations
 
@@ -84,5 +99,9 @@ install it with `adb install app-debug.apk` or by copying it to the phone.
   manufacturer's battery-optimization exemption setting for this app.
 - The overlay auto-dismisses after 15s for priority 0-2; priority 3
   (critical) stays until you tap an action.
-- No chat UI here by design - see `clients/web_console/` or
-  `clients/desktop_minimal/` for that.
+- Chat history in `ChatActivity` isn't persisted locally - it's just the
+  in-memory log for that screen session (ALEX's own conversation memory on
+  the server side is unaffected; reopening Chat continues the same
+  conversation, you just don't see the earlier lines again on this
+  screen). `clients/web_console/` and `clients/desktop_minimal/` remain
+  valid alternatives if you'd rather chat from a browser or desktop.

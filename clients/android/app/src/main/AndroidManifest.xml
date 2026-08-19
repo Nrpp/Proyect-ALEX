@@ -34,6 +34,12 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ChatActivity"
+            android:exported="false"
+            android:label="@string/btn_chat"
+            android:windowSoftInputMode="adjustResize" />
+
         <service
             android:name=".AlexConnectionService"
             android:exported="false"

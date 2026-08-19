@@ -44,8 +44,8 @@ setup and verification on real hardware.
   `desktop_minimal/` is a working cross-platform popup-notification client;
   `web_console/` is a HUD-style browser chat client, served directly by
   ALEX at `/console/`; `android/` is a native Android app that runs as a
-  background service and overlays important notifications on top of other
-  apps.
+  background service, overlays important notifications on top of other
+  apps, and has its own Chat screen to talk to ALEX directly.
 
 ## Quick start (development machine, no Pi needed)
 
