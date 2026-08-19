@@ -403,7 +403,7 @@
   }
 
   // ---------------- Toasts ----------------
-  function showToast(n) {
+  function showToast(n, opts = {}) {
     const el = document.createElement("div");
     el.className = "toast p" + (n.priority ?? 1);
     const title = document.createElement("div");
@@ -447,9 +447,28 @@
     el.appendChild(actionsEl);
     toastContainer.appendChild(el);
 
-    if ((n.priority ?? 1) < 2) {
+    if ((n.priority ?? 1) < 2 && !opts.persist) {
       setTimeout(() => el.remove(), 12000);
     }
+  }
+
+  // Reached when a push notification is tapped (see sw.js): the OS banner
+  // truncates the body, so the tap deep-links back here with the
+  // notification's id and this pulls the untruncated version from history
+  // to show in a toast that stays up until dismissed.
+  async function showNotificationFromQuery() {
+    const params = new URLSearchParams(location.search);
+    const id = params.get("n");
+    if (!id) return;
+    history.replaceState(null, "", location.pathname);
+    try {
+      const resp = await fetch(`${apiBase()}/notifications?limit=20`, {
+        headers: { "Authorization": "Bearer " + cfg().token },
+      });
+      const items = await resp.json();
+      const n = items.find((x) => x.id === id);
+      if (n) showToast(n, { persist: true });
+    } catch (e) { console.error(e); }
   }
 
   // ---------------- Web Push ----------------
@@ -635,6 +654,7 @@
       navigator.serviceWorker.register("sw.js").catch((e) => console.error("SW register failed", e));
     }
     updatePushButton();
+    showNotificationFromQuery();
   }
 
   boot();

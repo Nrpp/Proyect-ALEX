@@ -201,6 +201,7 @@ class Settings(BaseSettings):
     briefing_time: str = "07:30"
     briefing_news_rss_url: str = "https://feeds.bbci.co.uk/mundo/rss.xml"
     briefing_news_max_items: int = 5
+    briefing_email_max_items: int = 5
 
     @field_validator("data_dir", "db_path", "log_dir", "tts_model_dir", mode="before")
     @classmethod
