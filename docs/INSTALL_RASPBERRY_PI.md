@@ -540,19 +540,21 @@ search for.
 On by default (`"daily_briefing"` in `ALEX_ENABLED_PLUGINS`). Once a day,
 at `ALEX_BRIEFING_TIME` (local time, default `07:30`), ALEX pushes a
 notification with the day's news, plus today's calendar events and pending
-tasks if you've set up 10c above (skipped otherwise - news alone works with
-zero configuration). If `ALEX_VOICE_ENABLED=true`, it's also spoken aloud
+tasks if you've set up 10c above and unread emails if you've set up 10b
+(each skipped independently if not configured - news alone works with zero
+configuration). If `ALEX_VOICE_ENABLED=true`, it's also spoken aloud
 through the speaker, not just pushed. You don't have to wait for the
 scheduled time either - just ask "dime las noticias de hoy" any time.
 
-To change the time or news source:
+To change the time, news source, or how many unread emails it lists:
 ```
 ALEX_BRIEFING_TIME=07:30
 ALEX_BRIEFING_NEWS_RSS_URL=https://feeds.bbci.co.uk/mundo/rss.xml
 ALEX_BRIEFING_NEWS_MAX_ITEMS=5
+ALEX_BRIEFING_EMAIL_MAX_ITEMS=5
 ```
 Any RSS 2.0 feed works for `ALEX_BRIEFING_NEWS_RSS_URL`. Restart after
-changing either.
+changing any of these.
 
 ## 11. System command execution (`system_exec`) - HIGH RISK, optional
 
@@ -655,6 +657,11 @@ From then on, anything that reaches `send_notification` (including
 things ALEX decides to notify you about on its own within a chat turn)
 or fires as a reminder shows up as a real iOS notification - lock screen
 included - even with the app fully closed.
+
+Long notifications are still truncated in the banner/lock-screen preview
+itself - that's iOS, not ALEX (long-press the notification to expand it in
+place without opening anything). Tapping the notification opens the
+console and shows the untruncated text there.
 
 ## Updating
 

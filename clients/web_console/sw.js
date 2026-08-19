@@ -29,7 +29,9 @@ self.addEventListener("push", (event) => {
     tag: payload.id || undefined, // same id replaces rather than stacking
     requireInteraction: priority >= 2, // high/critical stay until dismissed
     vibrate: priority >= 2 ? [200, 100, 200] : [120],
-    data: { url: "./" },
+    // The banner itself is truncated by the OS - deep-link back with the
+    // notification id so the app can show the untruncated body on open.
+    data: { url: "./?n=" + encodeURIComponent(payload.id || "") },
   };
 
   event.waitUntil(self.registration.showNotification(payload.title || "ALEX", options));

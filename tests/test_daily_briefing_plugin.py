@@ -14,6 +14,7 @@ from alex.plugins.installed.daily_briefing_plugin import (
     fetch_news_headlines,
     fetch_pending_tasks,
     fetch_today_events,
+    fetch_unread_emails,
 )
 
 pytestmark = pytest.mark.asyncio
@@ -59,6 +60,50 @@ async def test_fetch_today_events_skips_when_not_configured():
 async def test_fetch_pending_tasks_skips_when_not_configured():
     settings = _settings(google_tasks_client_id="", google_tasks_client_secret="", google_tasks_refresh_token="")
     assert await fetch_pending_tasks(settings) == []
+
+
+async def test_fetch_unread_emails_skips_when_not_configured():
+    settings = _settings(google_gmail_client_id="", google_gmail_client_secret="", google_gmail_refresh_token="")
+    assert await fetch_unread_emails(settings) == []
+
+
+async def test_fetch_unread_emails_returns_headlines_when_configured(monkeypatch):
+    settings = _settings(
+        google_gmail_client_id="id", google_gmail_client_secret="secret", google_gmail_refresh_token="token",
+    )
+
+    async def fake_token(self):
+        return "access-token"
+
+    async def fake_get(self, url, params=None, **kwargs):
+        if url.endswith("/users/me/messages"):
+            return httpx.Response(200, json={"messages": [{"id": "abc"}]}, request=httpx.Request("GET", url))
+        return httpx.Response(
+            200,
+            json={"payload": {"headers": [
+                {"name": "Subject", "value": "Factura pendiente"},
+                {"name": "From", "value": "Banco <banco@example.com>"},
+            ]}},
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr("alex.plugins.installed.daily_briefing_plugin.GoogleOAuthTokenSource.token", fake_token)
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    emails = await fetch_unread_emails(settings)
+    assert emails == ["Banco: Factura pendiente"]
+
+
+async def test_fetch_unread_emails_returns_empty_on_error(monkeypatch):
+    settings = _settings(
+        google_gmail_client_id="id", google_gmail_client_secret="secret", google_gmail_refresh_token="token",
+    )
+
+    async def fake_token(self):
+        raise RuntimeError("oauth failed")
+
+    monkeypatch.setattr("alex.plugins.installed.daily_briefing_plugin.GoogleOAuthTokenSource.token", fake_token)
+    assert await fetch_unread_emails(settings) == []
 
 
 async def test_fetch_today_events_returns_summaries_when_configured(monkeypatch):
@@ -121,14 +166,19 @@ async def test_build_briefing_text_composes_all_sections(monkeypatch):
     async def fake_tasks(settings_arg):
         return ["Tarea A"]
 
+    async def fake_emails(settings_arg):
+        return ["Banco: Factura pendiente"]
+
     monkeypatch.setattr(briefing, "fetch_news_headlines", fake_news)
     monkeypatch.setattr(briefing, "fetch_today_events", fake_events)
     monkeypatch.setattr(briefing, "fetch_pending_tasks", fake_tasks)
+    monkeypatch.setattr(briefing, "fetch_unread_emails", fake_emails)
 
     text = await build_briefing_text(settings)
     assert "Nicolas" in text
     assert "Evento A" in text
     assert "Tarea A" in text
+    assert "Banco: Factura pendiente" in text
     assert "Noticia A" in text and "Noticia B" in text
 
 
@@ -141,6 +191,7 @@ async def test_build_briefing_text_handles_nothing_configured(monkeypatch):
     monkeypatch.setattr(briefing, "fetch_news_headlines", empty)
     monkeypatch.setattr(briefing, "fetch_today_events", empty)
     monkeypatch.setattr(briefing, "fetch_pending_tasks", empty)
+    monkeypatch.setattr(briefing, "fetch_unread_emails", empty)
 
     text = await build_briefing_text(settings)
     assert "No tienes eventos" in text
