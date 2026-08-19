@@ -29,3 +29,6 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Claude Code local tooling state (agent worktrees, etc.) - never project content
+.claude/
