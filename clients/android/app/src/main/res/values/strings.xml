@@ -10,4 +10,18 @@
     <string name="btn_overlay_permission">CONCEDER PERMISO DE SUPERPOSICION</string>
     <string name="btn_start">INICIAR SERVICIO</string>
     <string name="btn_stop">DETENER SERVICIO</string>
+    <string name="btn_chat">CHAT CON ALEX</string>
+
+    <string name="chat_hint">Escribe un mensaje…</string>
+    <string name="btn_send">ENVIAR</string>
+    <string name="chat_connecting">CONECTANDO…</string>
+    <string name="chat_connected">CONECTADO</string>
+    <string name="chat_connected_to">CONECTADO A %1$s</string>
+    <string name="chat_thinking">ALEX ESTA PENSANDO…</string>
+    <string name="chat_disconnected">DESCONECTADO</string>
+    <string name="chat_error">ERROR DE CONEXION</string>
+    <string name="chat_error_detail">Algo fallo. Revisa la conexion e intentalo de nuevo.</string>
+    <string name="chat_not_configured">Guarda el host primero</string>
+    <string name="chat_prefix_alex">ALEX_</string>
+    <string name="chat_prefix_user">TU_</string>
 </resources>

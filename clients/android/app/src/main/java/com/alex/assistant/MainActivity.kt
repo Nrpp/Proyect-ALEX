@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
         val saveBtn = findViewById<Button>(R.id.btn_save)
         val startBtn = findViewById<Button>(R.id.btn_start)
         val stopBtn = findViewById<Button>(R.id.btn_stop)
+        val chatBtn = findViewById<Button>(R.id.btn_chat)
         val statusText = findViewById<TextView>(R.id.text_status)
 
         hostInput.setText(prefs.host)
@@ -82,6 +83,14 @@ class MainActivity : AppCompatActivity() {
         stopBtn.setOnClickListener {
             stopService(Intent(this, AlexConnectionService::class.java))
             statusText.text = "Servicio detenido"
+        }
+
+        chatBtn.setOnClickListener {
+            if (!prefs.isConfigured) {
+                Toast.makeText(this, "Guarda el host primero", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            startActivity(Intent(this, ChatActivity::class.java))
         }
     }
 }
