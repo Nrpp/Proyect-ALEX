@@ -96,6 +96,18 @@ class Settings(BaseSettings):
     # without ever finishing could otherwise still hang past
     # ai_request_timeout_seconds even with every individual call bounded.
     ai_turn_timeout_seconds: int = 90
+    # Optional fallback chain, tried in order when the primary provider fails
+    # (delisted model, rate limit, outage...). Comma-separated "provider:model"
+    # entries; a bare "provider" uses that provider's *_model setting. Empty
+    # means no fallback. See alex/ai/fallback_provider.py.
+    #   ALEX_AI_FALLBACKS=nvidia:openai/gpt-oss-20b,anyapi:google/gemma-4-26b-a4b-it:free
+    ai_fallbacks: str = ""
+    # Per-provider timeout inside the chain - keep it well under
+    # ai_request_timeout_seconds so a hanging provider still leaves time to
+    # try the next one.
+    ai_fallback_attempt_timeout_seconds: int = 15
+    # How long a failed provider is skipped before being tried first again.
+    ai_fallback_cooldown_seconds: int = 300
 
     # --- Memory -----------------------------------------------------------
     memory_recent_messages: int = 20  # short-term context window size
